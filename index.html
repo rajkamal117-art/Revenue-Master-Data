@@ -7,6 +7,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <title>Revenue Hub · InitiateFirst</title>
   <link rel="stylesheet" href="styles.css">
+  <!-- Install as an app (Android / iPhone / desktop) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#EEE2F5">
+  <link rel="icon" type="image/png" href="favicon-64.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Revenue Hub">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body>
 <!-- Shared SVG filter that gives every icon shape its soft clay shading -->
@@ -60,6 +69,7 @@
       <div class="side-foot">
         <button class="nav-item" data-route="audit"><span class="clay-ico sm tone-lavender" data-icon="gear"></span><span>Activity log</span></button>
         <a class="nav-item" id="sheetLink" target="_blank" rel="noopener"><span class="clay-ico sm tone-mint" data-icon="cloud"></span><span>Open sheet</span></a>
+        <button class="nav-item" id="installBtn" hidden><span class="clay-ico sm" data-icon="cloud"></span><span>Install app</span></button>
         <button class="nav-item" id="logoutBtn"><span class="clay-ico sm" data-icon="send"></span><span>Sign out</span></button>
       </div>
     </aside>
@@ -102,5 +112,24 @@
 
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script>
+    /* ---- Install as app ---- */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+    let deferredInstall = null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault(); deferredInstall = e;
+      document.getElementById('installBtn').hidden = false;
+    });
+    document.getElementById('installBtn').addEventListener('click', async () => {
+      if (deferredInstall) {
+        deferredInstall.prompt();
+        await deferredInstall.userChoice; deferredInstall = null;
+        document.getElementById('installBtn').hidden = true;
+      }
+    });
+    window.addEventListener('appinstalled', () => { document.getElementById('installBtn').hidden = true; });
+  </script>
 </body>
 </html>
