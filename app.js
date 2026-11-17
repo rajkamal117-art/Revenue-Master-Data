@@ -91,7 +91,7 @@ async function api(fn, ...args){
   let out;
   try{ out = await call({ action:fn, token:TOKEN, args }); }
   catch(e){ toast(e.message||'Network error','pink'); throw e; }
-  if(out.auth){ signOut(true); throw new Error(out.error); }
+  if(out.auth){ S.hadToken=!!TOKEN; signOut(true); throw new Error(out.error); }
   if(!out.ok){ toast(out.error||'Something went wrong','pink'); throw new Error(out.error); }
   return out.data;
 }
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   bindChrome();
   $('#loginForm').addEventListener('submit', doLogin);
   $('#logoutBtn').onclick = ()=> signOut(false);
-  if(TOKEN) startApp(); else showLogin();
+  startApp();   // the server decides whether a sign-in is needed
 });
 
 function showLogin(msg){
@@ -171,7 +171,7 @@ async function doLogin(e){
 function signOut(expired){
   if(TOKEN && !expired) call({ action:'logout', token:TOKEN }).catch(()=>{});
   TOKEN=''; session.set(null); S.boot=null; S.dash=null; S.data={};
-  closeDrawer(); showLogin(expired ? 'Your session expired. Please sign in again.' : '');
+  closeDrawer(); showLogin(expired && S.hadToken ? 'Your session expired. Please sign in again.' : '');
 }
 
 async function startApp(){
@@ -182,12 +182,13 @@ async function startApp(){
     $('#brandSub').textContent = S.boot.app.company;
     $('#sheetLink').href = S.boot.app.url;
     $('#avatar').title = S.boot.user.email + ' · ' + S.boot.user.role;
+    $('#logoutBtn').hidden = !S.boot.requireLogin;
     const hr=new Date().getHours();
     $('#greetHi').textContent = (hr<12?'Good morning':hr<17?'Good afternoon':'Good evening') + ', ' + S.boot.user.name.split(' ')[0] + ' 👋';
     renderNav();
     go({name:'dashboard'});
   }catch(e){
-    if(TOKEN) $('#view').innerHTML = emptyState('Could not load the app. Check API_URL in config.js and the sheet names in Code.gs.','lock');
+    if($('#login').hidden) $('#view').innerHTML = emptyState('Could not load the app. Check API_URL in config.js and the sheet names in Code.gs.','lock');
   }
 }
 
