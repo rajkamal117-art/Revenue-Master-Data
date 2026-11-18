@@ -3,59 +3,25 @@
    ===================================================================== */
 
 /* ---------- Clay icon set (matches the reference theme) ---------- */
-const C = { blue:'#8C9EE6', blueD:'#7A8FE0', blueL:'#A9BCF0', lav:'#B7A4E6', lavL:'#CBBEF0', lavD:'#9C86DA', mint:'#7FD0BD', mintD:'#62BFA8',
-            pink:'#F29AAE', pinkD:'#EC8AA0', yellow:'#F6D88C', cream:'#FBF7F1', cream2:'#EFE8DF', red:'#EE7C8F', teal:'#3E9C88' };
+const C = { blue:'#5B8CFF', blueD:'#3F6FF0', blueL:'#8FB0FF', lav:'#9B7BFF', lavL:'#C2B0FF', lavD:'#7F5CF0', mint:'#2FD27E', mintD:'#1FBF6E',
+            pink:'#FF5DA8', pinkD:'#EF3F92', yellow:'#FFB84A', cream:'#FFFFFF', cream2:'#2A2E3F', red:'#FF5A45', teal:'#1FBF6E' };
 const F = 'filter="url(#clay)"';
 const ICONS = {
-  dashboard: `<rect x="4" y="10" width="56" height="44" rx="10" fill="${C.blue}" ${F}/>
-    <rect x="4" y="10" width="56" height="12" rx="8" fill="${C.blueD}" ${F}/>
-    <circle cx="12" cy="16" r="2.2" fill="${C.pink}"/><circle cx="18.5" cy="16" r="2.2" fill="${C.yellow}"/><circle cx="25" cy="16" r="2.2" fill="${C.mint}"/>
-    <circle cx="21" cy="38" r="10" fill="${C.pink}" ${F}/>
-    <path d="M21 38V28a10 10 0 0 1 10 10z" fill="${C.yellow}" ${F}/>
-    <path d="M21 38h10a10 10 0 0 1-6 9.2z" fill="${C.blueL}" ${F}/>
-    <rect x="36" y="30" width="17" height="3.4" rx="1.7" fill="${C.cream}"/><rect x="36" y="37" width="17" height="3.4" rx="1.7" fill="${C.cream}"/><rect x="36" y="44" width="12" height="3.4" rx="1.7" fill="${C.cream}"/>`,
-  user: `<circle cx="32" cy="32" r="28" fill="${C.blue}" ${F}/>
-    <circle cx="32" cy="24" r="9.5" fill="${C.cream}" ${F}/>
-    <path d="M14.5 49c2.5-9 9-13.5 17.5-13.5S47 40 49.5 49C45 54 39 56.5 32 56.5S19 54 14.5 49z" fill="${C.cream}" ${F}/>`,
-  calendar: `<rect x="17" y="4" width="6" height="14" rx="3" fill="${C.cream}" ${F}/><rect x="41" y="4" width="6" height="14" rx="3" fill="${C.cream}" ${F}/>
-    <rect x="6" y="11" width="52" height="47" rx="10" fill="${C.cream}" ${F}/>
-    <path d="M6 21a10 10 0 0 1 10-10h32a10 10 0 0 1 10 10v4H6z" fill="${C.pink}" ${F}/>
-    ${[0,1,2,3].map(c=>[0,1,2].map(r=>`<rect x="${13+c*10.5}" y="${30+r*8.5}" width="6.5" height="6" rx="2" fill="${c===2&&r===2?C.red:'#CBC4EF'}"/>`).join('')).join('')}`,
-  folder: `<path d="M6 18a6 6 0 0 1 6-6h13l6 6h21a6 6 0 0 1 6 6v26a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6z" fill="${C.mintD}" ${F}/>
-    <rect x="14" y="19" width="34" height="22" rx="3" fill="${C.cream}" ${F}/>
-    <rect x="19" y="24" width="22" height="2.6" rx="1.3" fill="${C.lavL}"/><rect x="19" y="30" width="18" height="2.6" rx="1.3" fill="${C.lavL}"/>
-    <path d="M4 31a5 5 0 0 1 5-5h46a5 5 0 0 1 5 5l-2 19a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6z" fill="${C.mint}" ${F}/>`,
-  chat: `<path d="M16 6h18a12 12 0 0 1 12 12v4a12 12 0 0 1-12 12H18l-10 8 2-9A12 12 0 0 1 4 22v-4A12 12 0 0 1 16 6z" fill="${C.lav}" ${F}/>
-    <path d="M32 22h16a12 12 0 0 1 12 12v2a12 12 0 0 1-8 11.3l2 8.7-10-8H32a12 12 0 0 1-12-12v-2a12 12 0 0 1 12-12z" fill="${C.cream}" ${F}/>
-    <circle cx="32" cy="35" r="2.6" fill="${C.blueD}"/><circle cx="40" cy="35" r="2.6" fill="${C.blueD}"/><circle cx="48" cy="35" r="2.6" fill="${C.blueD}"/>`,
-  doc: `<path d="M15 5h25l15 15v33a6 6 0 0 1-6 6H15a6 6 0 0 1-6-6V11a6 6 0 0 1 6-6z" fill="${C.cream}" ${F}/>
-    <path d="M40 5l15 15H44a4 4 0 0 1-4-4z" fill="${C.lav}" ${F}/>
-    <rect x="17" y="28" width="28" height="3" rx="1.5" fill="${C.lavL}"/><rect x="17" y="35" width="28" height="3" rx="1.5" fill="${C.lavL}"/>
-    <rect x="17" y="42" width="28" height="3" rx="1.5" fill="${C.lavL}"/><rect x="17" y="49" width="16" height="3" rx="1.5" fill="${C.lavL}"/>`,
-  check: `<circle cx="32" cy="32" r="27" fill="${C.mint}" ${F}/>
-    <path d="M19 33l9 9 17-18" fill="none" stroke="${C.cream}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" ${F}/>`,
-  bell: `<circle cx="32" cy="8" r="3.5" fill="${C.pinkD}" ${F}/>
-    <path d="M32 9c-10 0-16.5 7.5-16.5 18v11L11 44h42l-4.5-6V27C48.5 16.5 42 9 32 9z" fill="${C.pink}" ${F}/>
-    <rect x="9" y="42" width="46" height="8" rx="4" fill="${C.pinkD}" ${F}/>
-    <circle cx="32" cy="54.5" r="5" fill="#F7C9A8" ${F}/>`,
-  cloud: `<path d="M17 50a12 12 0 0 1-1.5-23.9A17 17 0 0 1 48 22a13 13 0 0 1 1 28z" fill="${C.cream}" ${F}/>
-    <path d="M32 54V31M23.5 39l8.5-8.5 8.5 8.5" fill="none" stroke="${C.blueD}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" ${F}/>`,
-  search: `<circle cx="27" cy="27" r="14" fill="none" stroke="#7C74D9" stroke-width="7.5" ${F}/>
-    <path d="M38 38l14 14" stroke="#7C74D9" stroke-width="8.5" stroke-linecap="round" ${F}/>`,
-  sliders: `<path d="M7 16h50M7 32h50M7 48h50" stroke="${C.cream2}" stroke-width="5" stroke-linecap="round" ${F}/>
-    <circle cx="41" cy="16" r="7" fill="${C.pink}" ${F}/><circle cx="21" cy="32" r="7" fill="${C.blue}" ${F}/><circle cx="38" cy="48" r="7" fill="${C.mint}" ${F}/>`,
-  chart: `<rect x="7" y="26" width="14" height="26" rx="3.5" fill="${C.lav}" ${F}/>
-    <rect x="25" y="8" width="14" height="44" rx="3.5" fill="${C.blueD}" ${F}/>
-    <rect x="43" y="19" width="14" height="33" rx="3.5" fill="${C.mint}" ${F}/>
-    <rect x="3" y="51" width="58" height="7" rx="3.5" fill="${C.cream}" ${F}/>`,
-  gear: `<g ${F}><path fill="${C.lav}" fill-rule="evenodd" d="${gearPath()}"/></g>`,
-  lock: `<path d="M21 30v-8a11 11 0 0 1 22 0v8" fill="none" stroke="${C.cream2}" stroke-width="6.5" stroke-linecap="round" ${F}/>
-    <rect x="11" y="27" width="42" height="32" rx="9" fill="${C.mint}" ${F}/>
-    <circle cx="32" cy="40" r="4.2" fill="${C.teal}"/><rect x="30.2" y="40" width="3.6" height="9" rx="1.8" fill="${C.teal}"/>`,
-  send: `<path d="M5 30L59 7 45 56 31 39z" fill="${C.lavL}" ${F}/>
-    <path d="M31 39L59 7 26 33z" fill="${C.lav}" ${F}/>
-    <path d="M31 39l-4 14 9-9z" fill="${C.lavD}" ${F}/>
-    <path d="M6 50l9-7M10 57l9-7" stroke="${C.cream}" stroke-width="3" stroke-linecap="round"/>`
+  dashboard: `<rect x="7" y="12" width="50" height="40" rx="8" fill="none" stroke="#fff" stroke-width="5"/><path d="M7 25h50" stroke="#fff" stroke-width="5"/><circle cx="22" cy="39" r="7" fill="#fff"/><path d="M35 35h14M35 43h10" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>`,
+  calendar: `<rect x="8" y="12" width="48" height="44" rx="9" fill="none" stroke="#fff" stroke-width="5"/><path d="M8 26h48M22 6v12M42 6v12" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="24" cy="40" r="3.4" fill="#fff"/><circle cx="40" cy="40" r="3.4" fill="#fff"/>`,
+  folder: `<path d="M8 20a6 6 0 0 1 6-6h13l6 7h17a6 6 0 0 1 6 6v21a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6z" fill="#fff"/>`,
+  chat: `<path d="M14 10h26a8 8 0 0 1 8 8v12a8 8 0 0 1-8 8H26l-10 8v-8h-2a8 8 0 0 1-8-8V18a8 8 0 0 1 8-8z" fill="#fff"/><circle cx="20" cy="24" r="3" fill="rgba(70,40,160,.55)"/><circle cx="28" cy="24" r="3" fill="rgba(70,40,160,.55)"/><circle cx="36" cy="24" r="3" fill="rgba(70,40,160,.55)"/><path d="M52 28a8 8 0 0 1 4 7v8a8 8 0 0 1-8 8h-2l-8 6v-6" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".6"/>`,
+  doc: `<path d="M16 6h22l14 14v32a6 6 0 0 1-6 6H16a6 6 0 0 1-6-6V12a6 6 0 0 1 6-6z" fill="#fff"/><path d="M20 31h24M20 40h24M20 49h14" stroke="rgba(0,0,0,.3)" stroke-width="4" stroke-linecap="round"/>`,
+  check: `<path d="M14 33l13 13 24-26" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>`,
+  bell: `<path d="M32 8c-10 0-17 7.5-17 18v10l-5 8h44l-5-8V26C49 15.5 42 8 32 8z" fill="#fff"/><circle cx="32" cy="54" r="5" fill="#fff"/>`,
+  cloud: `<path d="M18 48a11 11 0 0 1-1-22 16 16 0 0 1 31 3 10 10 0 0 1 0 19z" fill="#fff"/><path d="M32 44V28m-7 7l7-7 7 7" stroke="rgba(40,70,200,.75)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+  search: `<circle cx="27" cy="27" r="14" fill="none" stroke="#fff" stroke-width="7"/><path d="M38 38l15 15" stroke="#fff" stroke-width="8" stroke-linecap="round"/>`,
+  sliders: `<path d="M8 16h48M8 32h48M8 48h48" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".55"/><circle cx="42" cy="16" r="7" fill="#fff"/><circle cx="22" cy="32" r="7" fill="#fff"/><circle cx="38" cy="48" r="7" fill="#fff"/>`,
+  chart: `<rect x="9" y="30" width="13" height="24" rx="4" fill="#fff" opacity=".7"/><rect x="25" y="10" width="13" height="44" rx="4" fill="#fff"/><rect x="41" y="22" width="13" height="32" rx="4" fill="#fff" opacity=".85"/>`,
+  gear: `<path fill="#fff" fill-rule="evenodd" d="${gearPath()}"/>`,
+  lock: `<path d="M21 30v-7a11 11 0 0 1 22 0v7" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><rect x="12" y="28" width="40" height="28" rx="8" fill="#fff"/><circle cx="32" cy="41" r="4" fill="rgba(0,90,50,.55)"/>`,
+  send: `<path d="M8 30L58 8 44 56 31 40z" fill="#fff"/><path d="M31 40L58 8 26 34z" fill="rgba(0,0,0,.2)"/>`,
+  user: `<circle cx="32" cy="22" r="11" fill="#fff"/><path d="M10 57c0-12 10-19 22-19s22 7 22 19z" fill="#fff"/>`
 };
 function gearPath(){
   const cx=32, cy=32, R=26, r=19.5, n=8, hole=9.5; let d='';
@@ -69,8 +35,8 @@ function gearPath(){
   return d+`Z M${cx+hole} ${cy} A${hole} ${hole} 0 1 0 ${cx-hole} ${cy} A${hole} ${hole} 0 1 0 ${cx+hole} ${cy} Z`;
 }
 function icon(name){ return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">${ICONS[name]||ICONS.doc}</svg>`; }
-function hydrateIcons(root){ (root||document).querySelectorAll('[data-icon]').forEach(el=>{ if(!el.firstChild) el.innerHTML=icon(el.dataset.icon); }); }
-function ico(name,size){ return `<span class="clay-ico ${size||'sm'}">${icon(name)}</span>`; }
+function hydrateIcons(root){ (root||document).querySelectorAll('[data-icon]').forEach(el=>{ el.classList.add('ic-'+el.dataset.icon); if(!el.firstChild) el.innerHTML=icon(el.dataset.icon); }); }
+function ico(name,size){ return `<span class="clay-ico ${size||'sm'} ic-${name}">${icon(name)}</span>`; }
 
 /* ---------- Server bridge (Apps Script JSON API) ---------- */
 const API_URL = (window.REVENUE_HUB_CONFIG || {}).API_URL || '';
@@ -117,7 +83,7 @@ function compact(n){
   if(a>=1e3) return '₹'+(n/1e3).toFixed(1)+' K';
   return '₹'+Math.round(n||0);
 }
-const PALETTE = ['#8C9EE6','#B7A4E6','#7FD0BD','#F29AAE','#F6D88C','#A9C1F0','#D7B6EA','#9ED9E3','#F5B99A','#C5CAD9'];
+const PALETTE = ['#5B8CFF','#9B7BFF','#2FD27E','#FF5DA8','#FFB84A','#3CD4E8','#FF7A5C','#C77DFF','#7BD88F','#8D96AA'];
 function toneFor(s){
   s=String(s||'').toLowerCase();
   if(!s) return 'gray';
@@ -364,16 +330,30 @@ function alertList(list){
     </div>`).join('')}</div>`;
 }
 
+const alertKey=x=>x.module+':'+x.row+':'+x.type;
+const alertsLive=()=>{ const gone=new Set(store.get('alertsGone',[])); return (S.dash&&S.dash.alerts||[]).filter(x=>!gone.has(alertKey(x))); };
+const alertImportant=x=>x.days===null||x.days<=7;
 function updateBell(){
-  const n=(S.dash&&S.dash.alerts||[]).length, b=$('#bellBadge');
+  const n=alertsLive().length, b=$('#bellBadge');
   b.hidden=!n; b.textContent=n>99?'99+':n;
+}
+function drawAlerts(tab){
+  const pop=$('#alertPop'), all=alertsLive(), imp=all.filter(alertImportant), up=all.filter(x=>!alertImportant(x));
+  const list=tab==='important'?imp:tab==='upcoming'?up:all;
+  pop.innerHTML=`<div class="ap-head"><h4>Alerts</h4><button class="btn btn-coral" id="apClear">Clear all</button></div>
+    <div class="ap-tabs">${[['all','All',all.length],['important','Important',imp.length],['upcoming','Upcoming',up.length]].map(t=>`<button data-tab="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}<span>${t[2]}</span></button>`).join('')}</div>
+    <div class="ap-body">${alertList(list)}</div>
+    <div class="ap-foot"><button class="btn btn-coral" id="apExit">Exit</button></div>`;
+  pop.querySelectorAll('[data-tab]').forEach(b=> b.onclick=e=>{ e.stopPropagation(); drawAlerts(b.dataset.tab); });
+  $('#apClear').onclick=e=>{ e.stopPropagation(); store.set('alertsGone',(S.dash.alerts||[]).map(alertKey)); updateBell(); drawAlerts(tab); };
+  $('#apExit').onclick=e=>{ e.stopPropagation(); pop.hidden=true; };
+  bindOpeners(pop, ()=>pop.hidden=true);
 }
 async function toggleAlerts(){
   const pop=$('#alertPop');
   if(!pop.hidden){ pop.hidden=true; return; }
   if(!S.dash) S.dash=await api('getDashboard');
-  pop.innerHTML=`<h4>Alerts</h4>${alertList(S.dash.alerts)}`;
-  pop.hidden=false; bindOpeners(pop, ()=>pop.hidden=true);
+  drawAlerts('all'); pop.hidden=false;
 }
 function bindOpeners(root, after){
   root.querySelectorAll('[data-open]').forEach(el=> el.onclick=()=>{
@@ -661,7 +641,7 @@ function renderRevenueView(){
       </div></div>
       ${active.length?`<div class="rv-chips">${active.map(a=>`<button class="chip t-lavender" data-clear="${esc(a.k)}">${esc(a.l)}: ${esc(a.v)} ✕</button>`).join('')}</div>`:''}
     </div>
-    <div class="rv-top"><div class="rv-h">${esc(period)}</div>
+    <div class="rv-top"><div><div class="rv-h">${esc(period)}</div>${d.note?`<div class="rv-note">${esc(d.note)}</div>`:''}</div>
       <div class="seg" role="group" aria-label="Metric"><button data-metric="revenue" class="${m==='revenue'?'on':''}">Revenue</button><button data-metric="margin" class="${m==='margin'?'on':''}">Margin</button></div></div>
     <div class="kpis">
       ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
