@@ -592,20 +592,20 @@ async function showAudit(){
 }
 
 /* =====================================================================
-   REVENUE EXPLORER  (client / year / month filters + revenue | margin switch)
-   Data comes from the Apps Script function getRevenueView (RevenueView.gs)
+   REVENUE EXPLORER  (collapsible Filters panel + revenue | margin switch)
+   Data comes from the Apps Script function getRevenueView (Code.gs)
    ===================================================================== */
-S.rv = Object.assign({ client:'All', year:'', month:'All', metric:'revenue', data:null }, store.get('rvf', {}));
+S.rv = Object.assign({ client:'All', year:'', month:'All', metric:'revenue', ex:{}, open:true, data:null }, store.get('rvf', {}));
+function rvSave(){ const f=S.rv; store.set('rvf',{client:f.client,year:f.year,month:f.month,metric:f.metric,ex:f.ex,open:f.open}); }
 
 async function loadRevenueView(){
   const box=$('#rvBox'); if(!box) return;
   const f=S.rv;
   if(f.data) box.style.opacity='.55'; else box.innerHTML='<div class="loader"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>';
-  try{ f.data = await api('getRevenueView', f.client, f.year, f.month==='All' ? '' : f.month); }
-  catch(e){ box.style.opacity=''; box.innerHTML = emptyState('Could not load the revenue view. Add RevenueView.gs to Apps Script and register getRevenueView.','chart'); return; }
-  const s=f.data.sel; f.client=s.client; f.year=s.year; f.month=s.month;
-  store.set('rvf',{client:f.client, year:f.year, month:f.month, metric:f.metric});
-  box.style.opacity='';
+  try{ f.data = await api('getRevenueView', f.client, f.year, f.month==='All' ? '' : f.month, f.ex||{}); }
+  catch(e){ box.style.opacity=''; box.innerHTML = emptyState('Could not load the revenue view. Update Code.gs, then redeploy a new version.','chart'); return; }
+  const s=f.data.sel; f.client=s.client; f.year=s.year; f.month=s.month; f.ex=s.ex||{};
+  rvSave(); box.style.opacity='';
   renderRevenueView();
 }
 
@@ -625,8 +625,17 @@ function rvBars(list, metric){
 
 function renderRevenueView(){
   const box=$('#rvBox'), f=S.rv, d=f.data; if(!box||!d) return;
-  const m=f.metric, mLabel=m==='margin'?'margin':'revenue', k=d.kpi, s=d.sel;
-  const period=`${s.client==='All'?'All clients':s.client} · ${s.month==='All'?'Full year':s.month} ${s.year==='All'?'(all years)':s.year}`;
+  const m=f.metric, mLabel=m==='margin'?'margin':'revenue', k=d.kpi, s=d.sel, defs=d.opts.filters||[], ex=s.ex||{};
+  const who=s.client==='All'?'All clients':s.client;
+  const period=`${who} · ${s.month==='All'?'Full year':s.month} ${s.year==='All'?'(all years)':s.year}`;
+
+  const active=[];
+  if(s.client!=='All') active.push({k:'client',l:'Client',v:s.client});
+  if(s.month!=='All') active.push({k:'month',l:'Month',v:s.month});
+  if(String(s.year)!==String(d.opts.years[0])) active.push({k:'year',l:'Year',v:s.year==='All'?'All years':s.year});
+  defs.forEach(x=>{ if(ex[x.key]) active.push({k:'ex:'+x.key,l:x.label,v:ex[x.key]}); });
+
+  const field=(label,key,list,sel)=>`<label class="rv-f"><span>${esc(label)}</span><select class="input" data-rv="${esc(key)}">${rvOptions(['All'].concat(list),sel)}</select></label>`;
   const kpi=(label,icn,value,foot,on)=>`
     <div class="clay kpi fade-in${on?' sel':''}"><div class="kpi-top"><span class="kpi-label">${label}</span>${ico(icn,'lg')}</div>
       <div class="kpi-value">${value}</div><div class="kpi-foot">${foot}</div></div>`;
@@ -635,13 +644,25 @@ function renderRevenueView(){
   const tr=d.trend.map(x=>({label:x.label, po:x.revenue, margin:x.margin, heads:x.heads}));
 
   box.innerHTML = `
-    <div class="clay rv-bar fade-in">
-      <label class="rv-f"><span>Client</span><select class="input" data-rv="client">${rvOptions(['All'].concat(d.opts.clients), s.client)}</select></label>
-      <label class="rv-f"><span>Year</span><select class="input" data-rv="year">${rvOptions(['All'].concat(d.opts.years), s.year)}</select></label>
-      <label class="rv-f"><span>Month</span><select class="input" data-rv="month">${rvOptions(['All'].concat(d.opts.months), s.month)}</select></label>
-      <div class="seg" role="group" aria-label="Metric"><button data-metric="revenue" class="${m==='revenue'?'on':''}">Revenue</button><button data-metric="margin" class="${m==='margin'?'on':''}">Margin</button></div>
+    <div class="clay rv-filters fade-in">
+      <div class="rv-fh" data-toggle>
+        ${ico('sliders','md')}
+        <div class="grow"><b>Filters</b><div class="sub">${active.length?active.length+' active':'Client, year, month and '+defs.length+' more'}</div></div>
+        <span class="rv-chev${f.open?' up':''}"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div class="rv-fp${f.open?' open':''}"><div class="rv-fpi">
+        <div class="rv-fgrid">
+          ${field('Client','client',d.opts.clients,s.client)}
+          ${field('Year','year',d.opts.years,s.year)}
+          ${field('Month','month',d.opts.months,s.month)}
+          ${defs.map(x=>field(x.label,'ex:'+x.key,x.values,ex[x.key]||'All')).join('')}
+        </div>
+        <div class="rv-fa"><button class="btn btn-ghost" data-reset>Reset all filters</button></div>
+      </div></div>
+      ${active.length?`<div class="rv-chips">${active.map(a=>`<button class="chip t-lavender" data-clear="${esc(a.k)}">${esc(a.l)}: ${esc(a.v)} ✕</button>`).join('')}</div>`:''}
     </div>
-    <div class="rv-h">${esc(period)}</div>
+    <div class="rv-top"><div class="rv-h">${esc(period)}</div>
+      <div class="seg" role="group" aria-label="Metric"><button data-metric="revenue" class="${m==='revenue'?'on':''}">Revenue</button><button data-metric="margin" class="${m==='margin'?'on':''}">Margin</button></div></div>
     <div class="kpis">
       ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
       ${kpi('Margin','check',compact(k.margin),inr(k.margin),m==='margin')}
@@ -649,7 +670,7 @@ function renderRevenueView(){
       ${kpi('Consultants','user',k.heads,'billing in period',false)}
     </div>
     <div class="grid rv-grid">
-      ${card(12,'chart','Monthly trend',`${esc(s.client==='All'?'All clients':s.client)} · ${s.year==='All'?'all years':s.year}`,trendChart(tr))}
+      ${card(12,'chart','Monthly trend',`${esc(who)} · ${s.year==='All'?'all years':s.year}`,trendChart(tr))}
       ${card(6,'dashboard',`BU-wise ${mLabel}`,'Business unit',rvBars(d.byBU,m))}
       ${card(6,'cloud',`Location-wise ${mLabel}`,'Resource location',rvBars(d.byLoc,m))}
       ${s.client==='All'?card(6,'folder',`Client-wise ${mLabel}`,'All clients',rvBars(d.byClient,m)):''}
@@ -657,10 +678,25 @@ function renderRevenueView(){
       ${card(6,'user',`Top consultants by ${mLabel}`,'Top 8',rvBars(d.people,m))}
     </div>`;
 
+  box.querySelector('[data-toggle]').onclick=()=>{
+    f.open=!f.open; rvSave();
+    box.querySelector('.rv-fp').classList.toggle('open',f.open);
+    box.querySelector('.rv-chev').classList.toggle('up',f.open);
+  };
   box.querySelectorAll('[data-rv]').forEach(sel=> sel.onchange=()=>{
-    const key=sel.dataset.rv; f[key]= key==='year' && sel.value!=='All' ? Number(sel.value) : sel.value; loadRevenueView();
+    const key=sel.dataset.rv, v=sel.value;
+    if(key.startsWith('ex:')){ f.ex=Object.assign({},f.ex); if(v==='All') delete f.ex[key.slice(3)]; else f.ex[key.slice(3)]=v; }
+    else f[key]= key==='year' && v!=='All' ? Number(v) : v;
+    loadRevenueView();
   });
-  box.querySelectorAll('[data-metric]').forEach(b=> b.onclick=()=>{ f.metric=b.dataset.metric; store.set('rvf',{client:f.client,year:f.year,month:f.month,metric:f.metric}); renderRevenueView(); });
+  box.querySelectorAll('[data-clear]').forEach(b=> b.onclick=()=>{
+    const key=b.dataset.clear;
+    if(key.startsWith('ex:')){ f.ex=Object.assign({},f.ex); delete f.ex[key.slice(3)]; }
+    else if(key==='client') f.client='All'; else if(key==='month') f.month='All'; else if(key==='year') f.year='';
+    loadRevenueView();
+  });
+  box.querySelector('[data-reset]').onclick=()=>{ f.client='All'; f.year=''; f.month='All'; f.ex={}; loadRevenueView(); };
+  box.querySelectorAll('[data-metric]').forEach(b=> b.onclick=()=>{ f.metric=b.dataset.metric; rvSave(); renderRevenueView(); });
   requestAnimationFrame(()=>{
     box.querySelectorAll('[data-h]').forEach(el=>{ el.style.height=el.dataset.h; });
     box.querySelectorAll('[data-w]').forEach(el=>{ el.style.width=el.dataset.w; });
