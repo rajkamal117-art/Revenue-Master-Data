@@ -256,6 +256,8 @@ async function showDashboard(force){
     </div>`;
 
   $('#view').innerHTML = `
+    <div id="rvBox" class="rv"></div>
+    <div class="rv-h">Overall snapshot</div>
     <div class="kpis">
       ${kpi('Active consultants','user', k.active||0, `${k.notice||0} on notice`, 'mint', `${k.clients||0} clients`)}
       ${kpi('Monthly revenue','chart', compact(k.revenue), 'billing run-rate', 'blue', inr(k.revenue))}
@@ -305,6 +307,7 @@ async function showDashboard(force){
   requestAnimationFrame(()=> document.querySelectorAll('[data-h]').forEach(el=>{ el.style.height=el.dataset.h; }));
   requestAnimationFrame(()=> document.querySelectorAll('[data-w]').forEach(el=>{ el.style.width=el.dataset.w; }));
   bindOpeners($('#view'));
+  loadRevenueView();
 }
 
 function trendChart(t){
@@ -586,4 +589,80 @@ async function showAudit(){
       <div class="li" style="cursor:default">${ico(l.action==='DELETE'?'bell':l.action==='CREATE'?'check':'sliders','md')}
         <div class="grow"><div class="t">${esc(l.action)} · ${esc(l.sheet)} row ${esc(l.row)}</div><div class="s" title="${esc(l.details)}">${esc(l.user)} · ${esc(l.details)}</div></div>
         <span class="chip t-lavender">${esc(l.ts)}</span></div>`).join('')}</div>`:emptyState('No activity yet','chat')}</div>`;
+}
+
+/* =====================================================================
+   REVENUE EXPLORER  (client / year / month filters + revenue | margin switch)
+   Data comes from the Apps Script function getRevenueView (RevenueView.gs)
+   ===================================================================== */
+S.rv = Object.assign({ client:'All', year:'', month:'All', metric:'revenue', data:null }, store.get('rvf', {}));
+
+async function loadRevenueView(){
+  const box=$('#rvBox'); if(!box) return;
+  const f=S.rv;
+  if(f.data) box.style.opacity='.55'; else box.innerHTML='<div class="loader"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>';
+  try{ f.data = await api('getRevenueView', f.client, f.year, f.month==='All' ? '' : f.month); }
+  catch(e){ box.style.opacity=''; box.innerHTML = emptyState('Could not load the revenue view. Add RevenueView.gs to Apps Script and register getRevenueView.','chart'); return; }
+  const s=f.data.sel; f.client=s.client; f.year=s.year; f.month=s.month;
+  store.set('rvf',{client:f.client, year:f.year, month:f.month, metric:f.metric});
+  box.style.opacity='';
+  renderRevenueView();
+}
+
+function rvOptions(list, selected){
+  return list.map(v=>`<option value="${esc(v)}"${String(v)===String(selected)?' selected':''}>${esc(v)}</option>`).join('');
+}
+
+function rvBars(list, metric){
+  if(!list || !list.length) return emptyState('No data for this selection','chart');
+  const top=[...list].sort((a,b)=>b[metric]-a[metric]).slice(0,8);
+  const max=Math.max(...top.map(x=>Math.abs(x[metric])),1);
+  return `<div class="hbars">${top.map((x,i)=>`
+    <div class="hbar"><span class="nm" title="${esc(x.name)}">${esc(x.name)}${x.headcount?` <span class="chip t-gray">${x.headcount}</span>`:''}</span>
+      <div class="track"><div class="fill" style="background:${x[metric]<0?C.pink:PALETTE[i%PALETTE.length]}" data-w="${(Math.abs(x[metric])/max*100).toFixed(1)}%"></div></div>
+      <span class="val">${compact(x[metric])}</span></div>`).join('')}</div>`;
+}
+
+function renderRevenueView(){
+  const box=$('#rvBox'), f=S.rv, d=f.data; if(!box||!d) return;
+  const m=f.metric, mLabel=m==='margin'?'margin':'revenue', k=d.kpi, s=d.sel;
+  const period=`${s.client==='All'?'All clients':s.client} · ${s.month==='All'?'Full year':s.month} ${s.year==='All'?'(all years)':s.year}`;
+  const kpi=(label,icn,value,foot,on)=>`
+    <div class="clay kpi fade-in${on?' sel':''}"><div class="kpi-top"><span class="kpi-label">${label}</span>${ico(icn,'lg')}</div>
+      <div class="kpi-value">${value}</div><div class="kpi-foot">${foot}</div></div>`;
+  const hasSBU = d.bySBU.some(x=>x.name!=='Unassigned');
+  const card=(span,icn,title,sub,body)=>`<div class="clay card span-${span} fade-in"><div class="card-h">${ico(icn,'md')}<div class="grow"><h3>${title}</h3><div class="sub">${sub}</div></div></div>${body}</div>`;
+  const tr=d.trend.map(x=>({label:x.label, po:x.revenue, margin:x.margin, heads:x.heads}));
+
+  box.innerHTML = `
+    <div class="clay rv-bar fade-in">
+      <label class="rv-f"><span>Client</span><select class="input" data-rv="client">${rvOptions(['All'].concat(d.opts.clients), s.client)}</select></label>
+      <label class="rv-f"><span>Year</span><select class="input" data-rv="year">${rvOptions(['All'].concat(d.opts.years), s.year)}</select></label>
+      <label class="rv-f"><span>Month</span><select class="input" data-rv="month">${rvOptions(['All'].concat(d.opts.months), s.month)}</select></label>
+      <div class="seg" role="group" aria-label="Metric"><button data-metric="revenue" class="${m==='revenue'?'on':''}">Revenue</button><button data-metric="margin" class="${m==='margin'?'on':''}">Margin</button></div>
+    </div>
+    <div class="rv-h">${esc(period)}</div>
+    <div class="kpis">
+      ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
+      ${kpi('Margin','check',compact(k.margin),inr(k.margin),m==='margin')}
+      ${kpi('Margin %','dashboard',k.pct+'%','of revenue',false)}
+      ${kpi('Consultants','user',k.heads,'billing in period',false)}
+    </div>
+    <div class="grid rv-grid">
+      ${card(12,'chart','Monthly trend',`${esc(s.client==='All'?'All clients':s.client)} · ${s.year==='All'?'all years':s.year}`,trendChart(tr))}
+      ${card(6,'dashboard',`BU-wise ${mLabel}`,'Business unit',rvBars(d.byBU,m))}
+      ${card(6,'cloud',`Location-wise ${mLabel}`,'Resource location',rvBars(d.byLoc,m))}
+      ${s.client==='All'?card(6,'folder',`Client-wise ${mLabel}`,'All clients',rvBars(d.byClient,m)):''}
+      ${hasSBU?card(6,'sliders',`Sub BU-wise ${mLabel}`,'Sub business unit',rvBars(d.bySBU,m)):''}
+      ${card(6,'user',`Top consultants by ${mLabel}`,'Top 8',rvBars(d.people,m))}
+    </div>`;
+
+  box.querySelectorAll('[data-rv]').forEach(sel=> sel.onchange=()=>{
+    const key=sel.dataset.rv; f[key]= key==='year' && sel.value!=='All' ? Number(sel.value) : sel.value; loadRevenueView();
+  });
+  box.querySelectorAll('[data-metric]').forEach(b=> b.onclick=()=>{ f.metric=b.dataset.metric; store.set('rvf',{client:f.client,year:f.year,month:f.month,metric:f.metric}); renderRevenueView(); });
+  requestAnimationFrame(()=>{
+    box.querySelectorAll('[data-h]').forEach(el=>{ el.style.height=el.dataset.h; });
+    box.querySelectorAll('[data-w]').forEach(el=>{ el.style.width=el.dataset.w; });
+  });
 }
