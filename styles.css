@@ -440,3 +440,32 @@ select.input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
 .rv-chips .chip{border:1px solid rgba(255,255,255,.12)}
 
 @media (max-width:860px){ .sidebar{background:rgba(12,14,22,.96)} }
+
+
+/* ---------- Multi-select filters ---------- */
+.rv-filters{position:relative;z-index:6}
+.rv-fp.open .rv-fpi{overflow:visible}
+.rv-fgrid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+.ms{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ms-l{font-size:11.5px;font-weight:800;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em}
+.ms-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;padding:11px 14px;border-radius:14px;
+  font-weight:700;font-size:13.5px;color:#fff;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)}
+.ms-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-btn.has{border-color:rgba(255,106,43,.65);box-shadow:0 0 0 1px rgba(255,106,43,.22)}
+.ms-pop{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:max(100%,260px);max-height:360px;display:flex;flex-direction:column;padding:10px;border-radius:18px;
+  background:linear-gradient(160deg,rgba(44,48,68,.97),rgba(20,22,34,.99));border:1px solid rgba(255,255,255,.16);box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.ms-pop[hidden]{display:none}
+.ms-q{width:100%;padding:9px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.06);color:#fff;outline:0;font:inherit;font-size:13px}
+.ms-list{overflow:auto;flex:1;margin:6px -4px;padding:0 4px;min-height:60px}
+.ms-o{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;cursor:pointer;font-weight:700;font-size:13px}
+.ms-o:hover{background:rgba(255,255,255,.07)}
+.ms-o[hidden]{display:none}
+.ms-o input{accent-color:#ff6a2b;width:16px;height:16px;flex:none}
+.ms-none{padding:12px;color:var(--ink-2);font-weight:700;font-size:12.5px}
+.ms-a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}
+.ms-a .lnk{color:var(--ink-2);font-weight:800;font-size:12px;padding:6px 8px}
+.ms-a .lnk:hover{color:#fff}
+.ms-a .btn-coral{padding:8px 18px}
+.rv-empty{margin-bottom:18px;padding:18px 20px}
+.rv-empty b{font-size:15px}
+@media (max-width:860px){.rv-fgrid{grid-template-columns:1fr 1fr}.rv-fgrid .ms:nth-child(even) .ms-pop{left:auto;right:0}}

@@ -572,25 +572,37 @@ async function showAudit(){
 }
 
 /* =====================================================================
-   REVENUE EXPLORER  (collapsible Filters panel + revenue | margin switch)
-   Data comes from the Apps Script function getRevenueView (Code.gs)
+   REVENUE EXPLORER  (cascading multi-select filters + revenue | margin switch)
+   Data comes from getRevenueView in Code.gs
    ===================================================================== */
-S.rv = Object.assign({ client:'All', year:'', month:'All', metric:'revenue', ex:{}, open:true, data:null }, store.get('rvf', {}));
-function rvSave(){ const f=S.rv; store.set('rvf',{client:f.client,year:f.year,month:f.month,metric:f.metric,ex:f.ex,open:f.open}); }
+S.rv = { sel: store.get('rvsel2', {}), metric: store.get('rvmetric2', 'revenue'), open: store.get('rvopen2', true), data: null, openKey: null };
+function rvSave(){ const f=S.rv; store.set('rvsel2',f.sel); store.set('rvmetric2',f.metric); store.set('rvopen2',f.open); }
 
 async function loadRevenueView(){
   const box=$('#rvBox'); if(!box) return;
   const f=S.rv;
   if(f.data) box.style.opacity='.55'; else box.innerHTML='<div class="loader"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>';
-  try{ f.data = await api('getRevenueView', f.client, f.year, f.month==='All' ? '' : f.month, f.ex||{}); }
-  catch(e){ box.style.opacity=''; box.innerHTML = emptyState('Could not load the revenue view. Update Code.gs, then redeploy a new version.','chart'); return; }
-  const s=f.data.sel; f.client=s.client; f.year=s.year; f.month=s.month; f.ex=s.ex||{};
-  rvSave(); box.style.opacity='';
+  try{ f.data = await api('getRevenueView', null, null, null, f.sel); }
+  catch(e){ box.style.opacity=''; box.innerHTML = emptyState('Could not load the revenue view: '+((e&&e.message)||'error')+'. Check that the latest Code.gs is deployed as a new version.','chart'); return; }
+  f.sel = f.data.sel; rvSave(); box.style.opacity='';
   renderRevenueView();
 }
 
-function rvOptions(list, selected){
-  return list.map(v=>`<option value="${esc(v)}"${String(v)===String(selected)?' selected':''}>${esc(v)}</option>`).join('');
+const rvSum = a => !a.length ? 'All' : a.length===1 ? a[0] : a[0]+' +'+(a.length-1);
+const rvKey = a => [...a].sort().join('\u0001');
+function rvVals(ms){ return [...ms.querySelectorAll('input[type=checkbox]:checked')].map(i=>i.value); }
+function rvClose(ms){ ms.classList.remove('open'); ms.querySelector('.ms-pop').hidden=true; }
+function rvApply(ms){
+  const f=S.rv, key=ms.dataset.ms, vals=rvVals(ms);
+  if(rvKey(vals)===rvKey(f.sel[key]||[])){ rvClose(ms); return false; }
+  f.sel[key]=vals; loadRevenueView(); return true;
+}
+if(!window.__rvDoc){
+  window.__rvDoc=true;
+  document.addEventListener('click', e=>{
+    const box=document.getElementById('rvBox'); if(!box) return;
+    box.querySelectorAll('.ms.open').forEach(ms=>{ if(!ms.contains(e.target)) rvApply(ms); });
+  });
 }
 
 function rvBars(list, metric){
@@ -605,44 +617,44 @@ function rvBars(list, metric){
 
 function renderRevenueView(){
   const box=$('#rvBox'), f=S.rv, d=f.data; if(!box||!d) return;
-  const m=f.metric, mLabel=m==='margin'?'margin':'revenue', k=d.kpi, s=d.sel, defs=d.opts.filters||[], ex=s.ex||{};
-  const who=s.client==='All'?'All clients':s.client;
-  const period=`${who} · ${s.month==='All'?'Full year':s.month} ${s.year==='All'?'(all years)':s.year}`;
+  const m=f.metric, mLabel=m==='margin'?'margin':'revenue', k=d.kpi, sel=d.sel, fcs=d.facets;
+  const pick=key=>sel[key]||[];
+  const period=`${pick('client').length?pick('client').join(', '):'All clients'} · ${pick('month').length?pick('month').join(', '):'Full year'} ${pick('year').length?pick('year').join(', '):'(all years)'}`;
+  const active=fcs.filter(fc=>pick(fc.key).length && !(fc.key==='year' && pick('year').length===1 && pick('year')[0]===d.latestYear));
 
-  const active=[];
-  if(s.client!=='All') active.push({k:'client',l:'Client',v:s.client});
-  if(s.month!=='All') active.push({k:'month',l:'Month',v:s.month});
-  if(String(s.year)!==String(d.opts.years[0])) active.push({k:'year',l:'Year',v:s.year==='All'?'All years':s.year});
-  defs.forEach(x=>{ if(ex[x.key]) active.push({k:'ex:'+x.key,l:x.label,v:ex[x.key]}); });
-
-  const field=(label,key,list,sel)=>`<label class="rv-f"><span>${esc(label)}</span><select class="input" data-rv="${esc(key)}">${rvOptions(['All'].concat(list),sel)}</select></label>`;
+  const msField=fc=>{
+    const s=pick(fc.key);
+    return `<div class="ms" data-ms="${esc(fc.key)}"><span class="ms-l">${esc(fc.label)}</span>
+      <button type="button" class="ms-btn${s.length?' has':''}" data-msb><span>${esc(rvSum(s))}</span><svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="ms-pop" hidden>${fc.values.length>8?'<input class="ms-q" type="search" placeholder="Search…">':''}
+        <div class="ms-list">${fc.values.map(v=>`<label class="ms-o"><input type="checkbox" value="${esc(v)}"${s.includes(v)?' checked':''}><span>${esc(v)}</span></label>`).join('')||'<div class="ms-none">No options</div>'}</div>
+        <div class="ms-a"><span><button type="button" class="lnk" data-msall>Select all</button><button type="button" class="lnk" data-msnone>Clear</button></span><button type="button" class="btn btn-coral" data-msapply>Apply</button></div>
+      </div></div>`;
+  };
   const kpi=(label,icn,value,foot,on)=>`
     <div class="clay kpi fade-in${on?' sel':''}"><div class="kpi-top"><span class="kpi-label">${label}</span>${ico(icn,'lg')}</div>
       <div class="kpi-value">${value}</div><div class="kpi-foot">${foot}</div></div>`;
-  const hasSBU = d.bySBU.some(x=>x.name!=='Unassigned');
+  const hasSBU=d.bySBU.some(x=>x.name!=='Unassigned');
   const card=(span,icn,title,sub,body)=>`<div class="clay card span-${span} fade-in"><div class="card-h">${ico(icn,'md')}<div class="grow"><h3>${title}</h3><div class="sub">${sub}</div></div></div>${body}</div>`;
   const tr=d.trend.map(x=>({label:x.label, po:x.revenue, margin:x.margin, heads:x.heads}));
+  const empty=(k.revenue===0 && !d.trend.length);
 
   box.innerHTML = `
     <div class="clay rv-filters fade-in">
       <div class="rv-fh" data-toggle>
         ${ico('sliders','md')}
-        <div class="grow"><b>Filters</b><div class="sub">${active.length?active.length+' active':'Client, year, month and '+defs.length+' more'}</div></div>
+        <div class="grow"><b>Filters</b><div class="sub">${active.length?active.length+' active':'Options narrow as you select'}</div></div>
         <span class="rv-chev${f.open?' up':''}"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       </div>
       <div class="rv-fp${f.open?' open':''}"><div class="rv-fpi">
-        <div class="rv-fgrid">
-          ${field('Client','client',d.opts.clients,s.client)}
-          ${field('Year','year',d.opts.years,s.year)}
-          ${field('Month','month',d.opts.months,s.month)}
-          ${defs.map(x=>field(x.label,'ex:'+x.key,x.values,ex[x.key]||'All')).join('')}
-        </div>
+        <div class="rv-fgrid">${fcs.map(msField).join('')}</div>
         <div class="rv-fa"><button class="btn btn-ghost" data-reset>Reset all filters</button></div>
       </div></div>
-      ${active.length?`<div class="rv-chips">${active.map(a=>`<button class="chip t-lavender" data-clear="${esc(a.k)}">${esc(a.l)}: ${esc(a.v)} ✕</button>`).join('')}</div>`:''}
+      ${active.length?`<div class="rv-chips">${active.map(fc=>`<button class="chip t-lavender" data-clear="${esc(fc.key)}">${esc(fc.label)}: ${esc(pick(fc.key).join(', '))} ✕</button>`).join('')}</div>`:''}
     </div>
     <div class="rv-top"><div><div class="rv-h">${esc(period)}</div>${d.note?`<div class="rv-note">${esc(d.note)}</div>`:''}</div>
       <div class="seg" role="group" aria-label="Metric"><button data-metric="revenue" class="${m==='revenue'?'on':''}">Revenue</button><button data-metric="margin" class="${m==='margin'?'on':''}">Margin</button></div></div>
+    ${empty?`<div class="clay card fade-in rv-empty"><b>Nothing to show for this selection.</b><div class="sub">Try “Reset all filters”. If everything shows 0, check the note above — it says how many employees were counted and why others were not.</div></div>`:''}
     <div class="kpis">
       ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
       ${kpi('Margin','check',compact(k.margin),inr(k.margin),m==='margin')}
@@ -650,33 +662,46 @@ function renderRevenueView(){
       ${kpi('Consultants','user',k.heads,'billing in period',false)}
     </div>
     <div class="grid rv-grid">
-      ${card(12,'chart','Monthly trend',`${esc(who)} · ${s.year==='All'?'all years':s.year}`,trendChart(tr))}
-      ${card(6,'dashboard',`BU-wise ${mLabel}`,'Business unit',rvBars(d.byBU,m))}
-      ${card(6,'cloud',`Location-wise ${mLabel}`,'Resource location',rvBars(d.byLoc,m))}
-      ${s.client==='All'?card(6,'folder',`Client-wise ${mLabel}`,'All clients',rvBars(d.byClient,m)):''}
+      ${card(12,'chart','Monthly trend',esc(period),trendChart(tr))}
+      ${d.byBU.length?card(6,'dashboard',`BU-wise ${mLabel}`,'Business unit',rvBars(d.byBU,m)):''}
+      ${d.byLoc.length?card(6,'cloud',`Location-wise ${mLabel}`,'Resource location',rvBars(d.byLoc,m)):''}
+      ${pick('client').length!==1?card(6,'folder',`Client-wise ${mLabel}`,'Clients',rvBars(d.byClient,m)):''}
       ${hasSBU?card(6,'sliders',`Sub BU-wise ${mLabel}`,'Sub business unit',rvBars(d.bySBU,m)):''}
       ${card(6,'user',`Top consultants by ${mLabel}`,'Top 8',rvBars(d.people,m))}
     </div>`;
 
-  box.querySelector('[data-toggle]').onclick=()=>{
-    f.open=!f.open; rvSave();
-    box.querySelector('.rv-fp').classList.toggle('open',f.open);
-    box.querySelector('.rv-chev').classList.toggle('up',f.open);
+  box.onclick = e=>{
+    const t=e.target;
+    if(t.closest('[data-toggle]')){
+      f.open=!f.open; rvSave();
+      box.querySelector('.rv-fp').classList.toggle('open',f.open);
+      box.querySelector('.rv-chev').classList.toggle('up',f.open); return;
+    }
+    const ms=t.closest('.ms');
+    if(t.closest('[data-msb]')){
+      if(ms.classList.contains('open')){ rvApply(ms); return; }
+      const other=[...box.querySelectorAll('.ms.open')].find(x=>x!==ms);
+      if(other){ f.openKey=ms.dataset.ms; if(rvApply(other)) return; f.openKey=null; }
+      ms.classList.add('open'); ms.querySelector('.ms-pop').hidden=false;
+      const q=ms.querySelector('.ms-q'); if(q) q.focus(); return;
+    }
+    if(t.closest('[data-msall]')){ ms.querySelectorAll('.ms-o:not([hidden]) input').forEach(i=>i.checked=true); return; }
+    if(t.closest('[data-msnone]')){ ms.querySelectorAll('input[type=checkbox]').forEach(i=>i.checked=false); return; }
+    if(t.closest('[data-msapply]')){ rvApply(ms); return; }
+    const clr=t.closest('[data-clear]'); if(clr){ f.sel[clr.dataset.clear]=[]; loadRevenueView(); return; }
+    if(t.closest('[data-reset]')){ f.sel={}; loadRevenueView(); return; }
+    const mt=t.closest('[data-metric]'); if(mt){ f.metric=mt.dataset.metric; rvSave(); renderRevenueView(); }
   };
-  box.querySelectorAll('[data-rv]').forEach(sel=> sel.onchange=()=>{
-    const key=sel.dataset.rv, v=sel.value;
-    if(key.startsWith('ex:')){ f.ex=Object.assign({},f.ex); if(v==='All') delete f.ex[key.slice(3)]; else f.ex[key.slice(3)]=v; }
-    else f[key]= key==='year' && v!=='All' ? Number(v) : v;
-    loadRevenueView();
-  });
-  box.querySelectorAll('[data-clear]').forEach(b=> b.onclick=()=>{
-    const key=b.dataset.clear;
-    if(key.startsWith('ex:')){ f.ex=Object.assign({},f.ex); delete f.ex[key.slice(3)]; }
-    else if(key==='client') f.client='All'; else if(key==='month') f.month='All'; else if(key==='year') f.year='';
-    loadRevenueView();
-  });
-  box.querySelector('[data-reset]').onclick=()=>{ f.client='All'; f.year=''; f.month='All'; f.ex={}; loadRevenueView(); };
-  box.querySelectorAll('[data-metric]').forEach(b=> b.onclick=()=>{ f.metric=b.dataset.metric; rvSave(); renderRevenueView(); });
+  box.oninput = e=>{
+    const q=e.target.closest('.ms-q'); if(!q) return;
+    const text=q.value.toLowerCase();
+    q.closest('.ms').querySelectorAll('.ms-o').forEach(o=>{ o.hidden=!o.textContent.toLowerCase().includes(text); });
+  };
+  if(f.openKey){
+    const ms=box.querySelector('.ms[data-ms="'+f.openKey+'"]');
+    if(ms){ ms.classList.add('open'); ms.querySelector('.ms-pop').hidden=false; }
+    f.openKey=null;
+  }
   requestAnimationFrame(()=>{
     box.querySelectorAll('[data-h]').forEach(el=>{ el.style.height=el.dataset.h; });
     box.querySelectorAll('[data-w]').forEach(el=>{ el.style.width=el.dataset.w; });
