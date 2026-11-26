@@ -198,8 +198,8 @@ function setActiveNav(){
 function go(route){
   S.route=route; setActiveNav(); $('#sidebar').classList.remove('open');
   if(route.name!=='module') $('#globalSearch').value='';
-  if(route.name==='dashboard') return showDashboard();
-  if(route.name==='module') return showModule(route.key, route.q, route.openRow);
+  if(route.name==='dashboard') return showDashboard(true);   // always read the sheet again when the dashboard is opened
+  if(route.name==='module'){ if(!route.q) delete S.data[route.key]; return showModule(route.key, route.q, route.openRow); }
   if(route.name==='audit') return showAudit();
 }
 function loading(){ $('#view').innerHTML='<div class="loader"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>'; }
