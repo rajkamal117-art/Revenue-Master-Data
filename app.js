@@ -223,42 +223,11 @@ async function showDashboard(force){
 
   $('#view').innerHTML = `
     <div id="rvBox" class="rv"></div>
-    <div class="rv-h">Overall snapshot</div>
-    <div class="kpis">
-      ${kpi('Active consultants','user', k.active||0, `${k.notice||0} on notice`, 'mint', `${k.clients||0} clients`)}
-      ${kpi('Monthly revenue','chart', compact(k.revenue), 'billing run-rate', 'blue', inr(k.revenue))}
-      ${kpi('Monthly margin','check', compact(k.margin), 'after cost to IF', k.marginPct>=20?'mint':'pink', (k.marginPct||0)+'%')}
-      ${kpi('Monthly cost','folder', compact(k.cost), 'L&H, TDS, laptop', 'lavender', inr(k.cost))}
-    </div>
-
     <div class="grid">
-      <div class="clay card span-8 fade-in">
-        <div class="card-h">${ico('chart','md')}<div class="grow"><h3>Revenue trend</h3><div class="sub">From Revenue Ledger · last ${d.trend.length} months</div></div>
-          <div class="legend"><span><i style="background:${C.blue}"></i>PO billing</span><span><i style="background:${C.mint}"></i>Margin</span></div></div>
-        ${trendChart(d.trend)}
-      </div>
-
-      <div class="clay card span-4 fade-in">
+      <div class="clay card span-6 fade-in">
         <div class="card-h">${ico('dashboard','md')}<div class="grow"><h3>Headcount by BU</h3><div class="sub">Active + notice period</div></div></div>
         ${donut(d.byBU)}
       </div>
-
-      <div class="clay card span-7 fade-in">
-        <div class="card-h">${ico('folder','md')}<div class="grow"><h3>Revenue by client</h3><div class="sub">Monthly run-rate · headcount</div></div></div>
-        ${clientBars(d.byClient)}
-      </div>
-
-      <div class="clay card span-5 fade-in">
-        <div class="card-h">${ico('bell','md')}<div class="grow"><h3>Needs attention</h3><div class="sub">Next ${45} days</div></div>
-          <span class="chip t-pink">${d.alerts.length}</span></div>
-        ${alertList(d.alerts.slice(0,6))}
-      </div>
-
-      <div class="clay card span-6 fade-in">
-        <div class="card-h">${ico('check','md')}<div class="grow"><h3>Billing vs target</h3><div class="sub">${esc(d.fyLabel||'')} · INR Crores</div></div></div>
-        ${targetBars(d.targets)}
-      </div>
-
       <div class="clay card span-6 fade-in">
         <div class="card-h">${ico('send','md')}<div class="grow"><h3>Recent joiners</h3><div class="sub">Latest client start dates</div></div></div>
         <div class="list">${(d.recent||[]).map(r=>`
@@ -622,12 +591,37 @@ function rvEmpty(d, picked){
   return `<div class="clay card fade-in rv-empty"><b>Nothing to show for this selection.</b><div class="sub">Try “Reset all filters”, or pick another year or month. A client only shows revenue once its employees have a Client DOJ date and Revenue/Margin in the sheet.</div>${lines?`<div class="sub" style="margin-top:8px">${lines}</div>`:''}</div>`;
 }
 
+const RV_GRAD=['linear-gradient(145deg,#6FA3FF,#3B63F0)','linear-gradient(145deg,#52E38C,#16B35F)','linear-gradient(145deg,#A892FF,#6A4DF0)','linear-gradient(145deg,#FFB067,#FF6A2B)','linear-gradient(145deg,#FF7BC8,#E0309F)'];
+
+function rvPeople(list){
+  if(!list || !list.length) return emptyState('No resources for this selection','user');
+  return `<div class="rv-search"><input class="input" id="rvq" type="search" placeholder="Search by name, BU, location or skill…"></div>
+    <div class="list">${list.map(x=>`
+      <div class="li rv-li" data-open="employees:${x.row}" data-q="${esc([x.name,x.client,x.bu,x.loc,x.skill].join(' ').toLowerCase())}">
+        <span class="ini" style="background:${hashColor(x.name)}">${esc(initials(x.name))}</span>
+        <div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${esc([x.client,x.bu,x.loc,x.skill].filter(Boolean).join(' · '))}</div></div>
+        <div class="rv-vals"><b>${compact(x.revenue)}</b><span>margin ${compact(x.margin)}</span></div></div>`).join('')}</div>`;
+}
+function rvSpocs(list){
+  if(!list || !list.length) return emptyState('No client managers found for this selection','chat');
+  return `<div class="list">${list.map(x=>`
+    <div class="li rv-li">
+      <span class="ini" style="background:${hashColor(x.name)}">${esc(initials(x.name))}</span>
+      <div class="grow"><div class="t">${esc(x.name)} <span class="chip t-gray">${esc(x.client)}</span></div>
+        <div class="s">${esc(x.bus.join(', ')||'No BU')} · ${x.count} resource${x.count===1?'':'s'}</div>
+        <div class="s">${esc(x.names.slice(0,5).join(', '))}${x.names.length>5?' +'+(x.names.length-5)+' more':''}</div></div>
+      <div class="rv-vals"><b>${compact(x.revenue)}</b><span>team revenue</span></div></div>`).join('')}</div>`;
+}
+
 function renderRevenueView(){
   const box=$('#rvBox'), f=S.rv, d=f.data; if(!box||!d) return;
-  const m=f.metric, mLabel=m==='margin'?'margin':'revenue', k=d.kpi, sel=d.sel, fcs=d.facets;
+  if(!['revenue','margin','resources','spocs'].includes(f.metric)) f.metric='revenue';
+  const m=f.metric, mv=m==='margin'?'margin':'revenue', k=d.kpi, sel=d.sel, fcs=d.facets;
   const pick=key=>sel[key]||[];
-  const period=`${pick('client').length?pick('client').join(', '):'All clients'} · ${pick('month').length?pick('month').join(', '):'Full year'} ${pick('year').length?pick('year').join(', '):'(all years)'}`;
+  const when=`${pick('month').length?pick('month').join(', '):'Full year'} ${pick('year').length?pick('year').join(', '):'(all years)'}`;
+  const period=`${pick('client').length?pick('client').join(', '):'All clients'} · ${when}`;
   const active=fcs.filter(fc=>pick(fc.key).length && !(fc.key==='year' && pick('year').length===1 && pick('year')[0]===d.latestYear));
+  const tiles=d.tiles||[], tot=tiles.reduce((a,t)=>({r:a.r+t.revenue,g:a.g+t.margin,h:a.h+t.headcount}),{r:0,g:0,h:0});
 
   const msField=fc=>{
     const s=pick(fc.key);
@@ -638,15 +632,55 @@ function renderRevenueView(){
         <div class="ms-a"><span><button type="button" class="lnk" data-msall>Select all</button><button type="button" class="lnk" data-msnone>Clear</button></span><button type="button" class="btn btn-coral" data-msapply>Apply</button></div>
       </div></div>`;
   };
+  const tile=(t,i)=>{
+    const on=pick('client').includes(t.name), big=mv==='margin'?t.margin:t.revenue, small=mv==='margin'?'revenue '+compact(t.revenue):'margin '+compact(t.margin);
+    return `<button type="button" class="clay rv-tile${on?' sel':''}${t.revenue===0?' zero':''}" data-tile="${esc(t.name)}">
+      <span class="clay-ico md ic-folder" style="--tile:${RV_GRAD[i%RV_GRAD.length]}">${icon('folder')}</span>
+      <b>${esc(t.name)}</b><span class="n">${compact(big)}</span><span class="sm">${t.headcount} resources · ${small}</span></button>`;
+  };
+  const mb=(key,label,icn,grad,sub)=>`<button type="button" class="clay rv-mb${m===key?' sel':''}" data-mb="${key}">
+      <span class="clay-ico md ic-${icn}" style="--tile:${grad}">${icon(icn)}</span><b>${label}</b><span class="sm">${sub}</span></button>`;
   const kpi=(label,icn,value,foot,on)=>`
     <div class="clay kpi fade-in${on?' sel':''}"><div class="kpi-top"><span class="kpi-label">${label}</span>${ico(icn,'lg')}</div>
       <div class="kpi-value">${value}</div><div class="kpi-foot">${foot}</div></div>`;
-  const hasSBU=d.bySBU.some(x=>x.name!=='Unassigned');
   const card=(span,icn,title,sub,body)=>`<div class="clay card span-${span} fade-in"><div class="card-h">${ico(icn,'md')}<div class="grow"><h3>${title}</h3><div class="sub">${sub}</div></div></div>${body}</div>`;
+  const hasSBU=d.bySBU.some(x=>x.name!=='Unassigned');
   const tr=d.trend.map(x=>({label:x.label, po:x.revenue, margin:x.margin, heads:x.heads}));
   const empty=(k.revenue===0 && !d.trend.length);
 
+  let panel='';
+  if(m==='resources') panel=card(12,'user','Resources',`${esc(period)} · ${(d.resources||[]).length} people`,rvPeople(d.resources));
+  else if(m==='spocs') panel=card(12,'chat','SPOCs (client managers)',`${esc(period)} · ${(d.spocs||[]).length} contacts`,rvSpocs(d.spocs));
+  else panel=`
+    ${empty?rvEmpty(d,pick('client')):''}
+    <div class="kpis">
+      ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
+      ${kpi('Margin','check',compact(k.margin),inr(k.margin),m==='margin')}
+      ${kpi('Margin %','dashboard',k.pct+'%','of revenue',false)}
+      ${kpi('Consultants','user',k.heads,'billing in period',false)}
+    </div>
+    <div class="grid rv-grid">
+      ${card(12,'chart','Monthly trend',esc(period),trendChart(tr))}
+      ${d.byBU.length?card(6,'dashboard',`BU-wise ${mv}`,'Business unit',rvBars(d.byBU,mv)):''}
+      ${d.byLoc.length?card(6,'cloud',`Location-wise ${mv}`,'Resource location',rvBars(d.byLoc,mv)):''}
+      ${pick('client').length!==1?card(6,'folder',`Client-wise ${mv}`,'Clients',rvBars(d.byClient,mv)):''}
+      ${hasSBU?card(6,'sliders',`Sub BU-wise ${mv}`,'Sub business unit',rvBars(d.bySBU,mv)):''}
+      ${card(6,'user',`Top consultants by ${mv}`,'Top 8',rvBars(d.people,mv))}
+    </div>`;
+
   box.innerHTML = `
+    <div class="clay rv-sum fade-in">
+      <div class="rv-cap">All clients · ${esc(when)}</div>
+      <div class="r2"><div><div class="sm">Revenue</div><div class="num big">${inr(tot.r)}</div></div>
+        <div class="right"><div class="sm">Margin</div><div class="num mid pos">${inr(tot.g)}</div></div></div>
+      <div class="sm">${tot.h} consultants · ${tot.r?Math.round(tot.g/tot.r*1000)/10:0}% margin</div>
+    </div>
+    <div class="rv-tiles">
+      <button type="button" class="clay rv-tile${pick('client').length?'':' sel'}" data-tile="">
+        <span class="clay-ico md ic-dashboard">${icon('dashboard')}</span><b>All clients</b><span class="n">${compact(mv==='margin'?tot.g:tot.r)}</span><span class="sm">${tot.h} resources</span></button>
+      ${tiles.map(tile).join('')}
+    </div>
+
     <div class="clay rv-filters fade-in">
       <div class="rv-fh" data-toggle>
         ${ico('sliders','md')}
@@ -659,26 +693,20 @@ function renderRevenueView(){
       </div></div>
       ${active.length?`<div class="rv-chips">${active.map(fc=>`<button class="chip t-lavender" data-clear="${esc(fc.key)}">${esc(fc.label)}: ${esc(pick(fc.key).join(', '))} ✕</button>`).join('')}</div>`:''}
     </div>
-    <div class="rv-top"><div><div class="rv-h">${esc(period)}</div>${d.note?`<div class="rv-note">${esc(d.note)}</div>`:''}</div>
-      <div class="seg" role="group" aria-label="Metric"><button data-metric="revenue" class="${m==='revenue'?'on':''}">Revenue</button><button data-metric="margin" class="${m==='margin'?'on':''}">Margin</button></div></div>
-    ${empty?rvEmpty(d,pick('client')):''}
-    <div class="kpis">
-      ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
-      ${kpi('Margin','check',compact(k.margin),inr(k.margin),m==='margin')}
-      ${kpi('Margin %','dashboard',k.pct+'%','of revenue',false)}
-      ${kpi('Consultants','user',k.heads,'billing in period',false)}
+
+    <div class="rv-top"><div><div class="rv-h">${esc(period)}</div>${d.note?`<div class="rv-note">${esc(d.note)}</div>`:''}</div></div>
+    <div class="rv-mbs">
+      ${mb('revenue','Revenue','chart',RV_GRAD[2],compact(k.revenue))}
+      ${mb('margin','Margin','check',RV_GRAD[1],k.pct+'% of revenue')}
+      ${mb('resources','Resources','user',RV_GRAD[0],(d.resources||[]).length+' people')}
+      ${mb('spocs','SPOCs','chat',RV_GRAD[4],(d.spocs||[]).length+' contacts')}
     </div>
-    <div class="grid rv-grid">
-      ${card(12,'chart','Monthly trend',esc(period),trendChart(tr))}
-      ${d.byBU.length?card(6,'dashboard',`BU-wise ${mLabel}`,'Business unit',rvBars(d.byBU,m)):''}
-      ${d.byLoc.length?card(6,'cloud',`Location-wise ${mLabel}`,'Resource location',rvBars(d.byLoc,m)):''}
-      ${pick('client').length!==1?card(6,'folder',`Client-wise ${mLabel}`,'Clients',rvBars(d.byClient,m)):''}
-      ${hasSBU?card(6,'sliders',`Sub BU-wise ${mLabel}`,'Sub business unit',rvBars(d.bySBU,m)):''}
-      ${card(6,'user',`Top consultants by ${mLabel}`,'Top 8',rvBars(d.people,m))}
-    </div>`;
+    ${panel}`;
 
   box.onclick = e=>{
     const t=e.target;
+    const tl=t.closest('[data-tile]'); if(tl){ f.sel.client=tl.dataset.tile?[tl.dataset.tile]:[]; loadRevenueView(); return; }
+    const mbt=t.closest('[data-mb]'); if(mbt){ f.metric=mbt.dataset.mb; rvSave(); renderRevenueView(); return; }
     if(t.closest('[data-toggle]')){
       f.open=!f.open; rvSave();
       box.querySelector('.rv-fp').classList.toggle('open',f.open);
@@ -696,14 +724,15 @@ function renderRevenueView(){
     if(t.closest('[data-msnone]')){ ms.querySelectorAll('input[type=checkbox]').forEach(i=>i.checked=false); return; }
     if(t.closest('[data-msapply]')){ rvApply(ms); return; }
     const clr=t.closest('[data-clear]'); if(clr){ f.sel[clr.dataset.clear]=[]; loadRevenueView(); return; }
-    if(t.closest('[data-reset]')){ f.sel={}; loadRevenueView(); return; }
-    const mt=t.closest('[data-metric]'); if(mt){ f.metric=mt.dataset.metric; rvSave(); renderRevenueView(); }
+    if(t.closest('[data-reset]')){ f.sel={}; loadRevenueView(); }
   };
   box.oninput = e=>{
-    const q=e.target.closest('.ms-q'); if(!q) return;
-    const text=q.value.toLowerCase();
-    q.closest('.ms').querySelectorAll('.ms-o').forEach(o=>{ o.hidden=!o.textContent.toLowerCase().includes(text); });
+    const q=e.target.closest('.ms-q');
+    if(q){ const text=q.value.toLowerCase(); q.closest('.ms').querySelectorAll('.ms-o').forEach(o=>{ o.hidden=!o.textContent.toLowerCase().includes(text); }); return; }
+    const rq=e.target.closest('#rvq');
+    if(rq){ const text=rq.value.toLowerCase(); box.querySelectorAll('.rv-li').forEach(li=>{ li.hidden=!(li.dataset.q||'').includes(text); }); }
   };
+  bindOpeners(box);
   if(f.openKey){
     const ms=box.querySelector('.ms[data-ms="'+f.openKey+'"]');
     if(ms){ ms.classList.add('open'); ms.querySelector('.ms-pop').hidden=false; }

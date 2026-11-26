@@ -469,3 +469,30 @@ select.input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
 .rv-empty{margin-bottom:18px;padding:18px 20px}
 .rv-empty b{font-size:15px}
 @media (max-width:860px){.rv-fgrid{grid-template-columns:1fr 1fr}.rv-fgrid .ms:nth-child(even) .ms-pop{left:auto;right:0}}
+
+
+/* ---------- Dashboard: client tiles + metric buttons ---------- */
+.rv-cap{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.rv-sum{padding:18px 20px;margin-bottom:14px;display:flex;flex-direction:column;gap:6px}
+.rv-sum .r2{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:4px}
+.rv-sum .right{text-align:right}
+.rv-sum .big{font-size:30px;letter-spacing:-.5px;color:#fff}
+.rv-sum .mid{font-size:20px}
+.rv-sum .pos{color:#62E39E}
+.rv-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.rv-tile,.rv-mb{color:#fff;font:inherit;cursor:pointer;text-align:left;border:1px solid rgba(255,255,255,.12);transition:transform .15s,box-shadow .15s}
+.rv-tile{padding:14px;display:flex;flex-direction:column;gap:6px}
+.rv-tile b{font-size:15px;font-weight:800}
+.rv-tile .n{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
+.rv-tile .sm,.rv-mb .sm{font-size:11.5px;color:var(--ink-2);font-weight:700}
+.rv-tile.zero{opacity:.55}
+.rv-tile.sel,.rv-mb.sel{border-color:rgba(255,106,43,.85);box-shadow:var(--clay-shadow),0 0 26px rgba(255,106,43,.35)}
+.rv-tile:active,.rv-mb:active{transform:scale(.98)}
+.rv-mbs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px}
+.rv-mb{padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.rv-mb b{font-size:13.5px;font-weight:800}
+.rv-vals{display:flex;flex-direction:column;align-items:flex-end;font-variant-numeric:tabular-nums}
+.rv-vals b{font-size:14px}
+.rv-vals span{font-size:11.5px;color:var(--ink-2);font-weight:700}
+.rv-search{margin-bottom:10px}
+@media (max-width:700px){.rv-tiles{grid-template-columns:1fr 1fr}.rv-mbs{grid-template-columns:1fr 1fr}.rv-sum .big{font-size:26px}}
