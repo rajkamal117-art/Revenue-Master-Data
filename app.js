@@ -615,6 +615,13 @@ function rvBars(list, metric){
       <span class="val">${compact(x[metric])}</span></div>`).join('')}</div>`;
 }
 
+function rvEmpty(d, picked){
+  const st=d.stats||{}, names=(picked.length?picked:Object.keys(st)).filter(n=>st[n]).slice(0,8);
+  const why=s=>[s.noDate?s.noDate+' without a Client DOJ date':'', s.noRev?s.noRev+' with no Revenue/Margin':'', s.noEnd?s.noEnd+' inactive without a last working date':''].filter(Boolean).join(', ');
+  const lines=names.map(n=>{ const s=st[n]; return `<div>${esc(n)}: ${s.used} of ${s.total} employees counted${why(s)?' — not counted: '+esc(why(s)):''}</div>`; }).join('');
+  return `<div class="clay card fade-in rv-empty"><b>Nothing to show for this selection.</b><div class="sub">Try “Reset all filters”, or pick another year or month. A client only shows revenue once its employees have a Client DOJ date and Revenue/Margin in the sheet.</div>${lines?`<div class="sub" style="margin-top:8px">${lines}</div>`:''}</div>`;
+}
+
 function renderRevenueView(){
   const box=$('#rvBox'), f=S.rv, d=f.data; if(!box||!d) return;
   const m=f.metric, mLabel=m==='margin'?'margin':'revenue', k=d.kpi, sel=d.sel, fcs=d.facets;
@@ -654,7 +661,7 @@ function renderRevenueView(){
     </div>
     <div class="rv-top"><div><div class="rv-h">${esc(period)}</div>${d.note?`<div class="rv-note">${esc(d.note)}</div>`:''}</div>
       <div class="seg" role="group" aria-label="Metric"><button data-metric="revenue" class="${m==='revenue'?'on':''}">Revenue</button><button data-metric="margin" class="${m==='margin'?'on':''}">Margin</button></div></div>
-    ${empty?`<div class="clay card fade-in rv-empty"><b>Nothing to show for this selection.</b><div class="sub">Try “Reset all filters”. If everything shows 0, check the note above — it says how many employees were counted and why others were not.</div></div>`:''}
+    ${empty?rvEmpty(d,pick('client')):''}
     <div class="kpis">
       ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
       ${kpi('Margin','check',compact(k.margin),inr(k.margin),m==='margin')}
