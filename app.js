@@ -210,38 +210,11 @@ function emptyState(msg,icn){ return `<div class="empty">${ico(icn||'doc','xl')}
    ===================================================================== */
 async function showDashboard(force){
   $('#pageTitle').textContent='Dashboard';
-  if(!S.dash || force){ loading(); S.dash = await api('getDashboard'); }
-  const d=S.dash, k=d.kpis||{};
+  // Dashboard data is now sourced exclusively from All Emp Data via getRevenueView.
+  // The alerts panel remains available, but no PO/other-tab alerts are fabricated.
+  S.dash = { alerts: [] };
   updateBell();
-
-  const kpi=(label,icn,value,foot,chipTone,chipTxt)=>`
-    <div class="clay kpi fade-in">
-      <div class="kpi-top"><span class="kpi-label">${label}</span>${ico(icn,'lg')}</div>
-      <div class="kpi-value">${value}</div>
-      <div class="kpi-foot">${chipTxt?`<span class="chip t-${chipTone}">${chipTxt}</span> `:''}${foot}</div>
-    </div>`;
-
-  $('#view').innerHTML = `
-    <div id="rvBox" class="rv"></div>
-    <div class="grid">
-      <div class="clay card span-6 fade-in">
-        <div class="card-h">${ico('dashboard','md')}<div class="grow"><h3>Headcount by BU</h3><div class="sub">Active + notice period</div></div></div>
-        ${donut(d.byBU)}
-      </div>
-      <div class="clay card span-6 fade-in">
-        <div class="card-h">${ico('send','md')}<div class="grow"><h3>Recent joiners</h3><div class="sub">Latest client start dates</div></div></div>
-        <div class="list">${(d.recent||[]).map(r=>`
-          <div class="li" data-open="employees:${r.row}">
-            <span class="ini" style="background:${hashColor(r.name)}">${esc(initials(r.name))}</span>
-            <div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.client)} · ${esc(r.skill)}</div></div>
-            <span class="chip t-blue">${esc(r.date)}</span></div>`).join('') || emptyState('No recent joiners','user')}
-        </div>
-      </div>
-    </div>`;
-
-  requestAnimationFrame(()=> document.querySelectorAll('[data-h]').forEach(el=>{ el.style.height=el.dataset.h; }));
-  requestAnimationFrame(()=> document.querySelectorAll('[data-w]').forEach(el=>{ el.style.width=el.dataset.w; }));
-  bindOpeners($('#view'));
+  $('#view').innerHTML = '<div id="rvBox" class="rv"></div>';
   loadRevenueView();
 }
 
@@ -250,7 +223,7 @@ function trendChart(t){
   const max=Math.max(...t.map(x=>x.po),1);
   return `<div class="cols">${t.map(x=>`
     <div class="col">
-      <div class="tip">${esc(x.label)} · PO ${compact(x.po)} · Margin ${compact(x.margin)} · ${x.heads} people</div>
+      <div class="tip">${esc(x.label)} · Revenue ${compact(x.po)} · Margin ${compact(x.margin)} · ${x.heads} people</div>
       <div class="col-bars">
         <div class="bar po" style="height:0" data-h="${(x.po/max*100).toFixed(1)}%"></div>
         <div class="bar mg" style="height:0" data-h="${(Math.max(0,x.margin)/max*100).toFixed(1)}%"></div>
@@ -321,7 +294,7 @@ function drawAlerts(tab){
 async function toggleAlerts(){
   const pop=$('#alertPop');
   if(!pop.hidden){ pop.hidden=true; return; }
-  if(!S.dash) S.dash=await api('getDashboard');
+  if(!S.dash) S.dash={ alerts:[] };
   drawAlerts('all'); pop.hidden=false;
 }
 function bindOpeners(root, after){
@@ -544,12 +517,16 @@ async function showAudit(){
    REVENUE EXPLORER  (cascading multi-select filters + revenue | margin switch)
    Data comes from getRevenueView in Code.gs
    ===================================================================== */
-S.rv = { sel: store.get('rvsel2', {}), metric: store.get('rvmetric2', 'revenue'), open: store.get('rvopen2', true), data: null, openKey: null };
+S.rv = { sel: store.get('rvsel2', {}), metric: store.get('rvmetric2', 'revenue'), open: store.get('rvopen2', true), data: null, openKey: null, clientScopeKey: null };
+function rvSyncClientScope(){
+  const clients=S.rv.sel.client||[], key=[...clients].sort().join('\u0001');
+  if(key!==S.rv.clientScopeKey){ S.rv.sel.st=clients.length?['Active','NP']:[]; S.rv.clientScopeKey=key; }
+}
 function rvSave(){ const f=S.rv; store.set('rvsel2',f.sel); store.set('rvmetric2',f.metric); store.set('rvopen2',f.open); }
 
 async function loadRevenueView(){
   const box=$('#rvBox'); if(!box) return;
-  const f=S.rv;
+  const f=S.rv; rvSyncClientScope();
   if(f.data) box.style.opacity='.55'; else box.innerHTML='<div class="loader"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>';
   try{ f.data = await api('getRevenueView', null, null, null, f.sel); }
   catch(e){ box.style.opacity=''; box.innerHTML = emptyState('Could not load the revenue view: '+((e&&e.message)||'error')+'. Check that the latest Code.gs is deployed as a new version.','chart'); return; }
@@ -621,7 +598,9 @@ function renderRevenueView(){
   const when=`${pick('month').length?pick('month').join(', '):'Full year'} ${pick('year').length?pick('year').join(', '):'(all years)'}`;
   const period=`${pick('client').length?pick('client').join(', '):'All clients'} · ${when}`;
   const active=fcs.filter(fc=>pick(fc.key).length && !(fc.key==='year' && pick('year').length===1 && pick('year')[0]===d.latestYear));
-  const tiles=d.tiles||[], tot=tiles.reduce((a,t)=>({r:a.r+t.revenue,g:a.g+t.margin,h:a.h+t.headcount}),{r:0,g:0,h:0});
+  const tiles=d.tiles||[], tot={r:k.revenue,g:k.margin,h:k.heads};
+  const selectedClients=pick('client');
+  const visibleTiles=selectedClients.length?tiles.filter(t=>selectedClients.includes(t.name)):tiles;
 
   const msField=fc=>{
     const s=pick(fc.key);
@@ -670,15 +649,15 @@ function renderRevenueView(){
 
   box.innerHTML = `
     <div class="clay rv-sum fade-in">
-      <div class="rv-cap">All clients · ${esc(when)}</div>
+      <div class="rv-cap">${esc(selectedClients.length?selectedClients.join(', '):'All clients')} · ${esc(when)}</div>
       <div class="r2"><div><div class="sm">Revenue</div><div class="num big">${inr(tot.r)}</div></div>
         <div class="right"><div class="sm">Margin</div><div class="num mid pos">${inr(tot.g)}</div></div></div>
-      <div class="sm">${tot.h} consultants · ${tot.r?Math.round(tot.g/tot.r*1000)/10:0}% margin</div>
+      <div class="sm">${tot.h} resources · ${tot.r?Math.round(tot.g/tot.r*1000)/10:0}% margin</div>
     </div>
     <div class="rv-tiles">
-      <button type="button" class="clay rv-tile${pick('client').length?'':' sel'}" data-tile="">
-        <span class="clay-ico md ic-dashboard">${icon('dashboard')}</span><b>All clients</b><span class="n">${compact(mv==='margin'?tot.g:tot.r)}</span><span class="sm">${tot.h} resources</span></button>
-      ${tiles.map(tile).join('')}
+      <button type="button" class="clay rv-tile${selectedClients.length?'':' sel'}" data-tile="">
+        <span class="clay-ico md ic-dashboard">${icon('dashboard')}</span><b>All clients</b><span class="n">${selectedClients.length?'View consolidated':compact(mv==='margin'?tot.g:tot.r)}</span><span class="sm">${selectedClients.length?'Switch to consolidated view':tot.h+' resources'}</span></button>
+      ${visibleTiles.map(tile).join('')}
     </div>
 
     <div class="clay rv-filters fade-in">
@@ -701,7 +680,11 @@ function renderRevenueView(){
       ${mb('resources','Resources','user',RV_GRAD[0],(d.resources||[]).length+' people')}
       ${mb('spocs','SPOCs','chat',RV_GRAD[4],(d.spocs||[]).length+' contacts')}
     </div>
-    ${panel}`;
+    ${panel}
+    <div class="grid rv-grid">
+      ${d.byBU.length?card(6,'dashboard','Headcount by BU','Filtered resources · Active + NP on client view',donut(d.byBU)):''}
+      ${card(6,'send','Recent joiners',`${esc(period)} · latest client start dates`,(d.recent||[]).length?`<div class="list">${d.recent.map(r=>`<div class="li" data-open="employees:${r.row}"><span class="ini" style="background:${hashColor(r.name)}">${esc(initials(r.name))}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.client)} · ${esc(r.skill)}</div></div><span class="chip t-blue">${esc(r.date)}</span></div>`).join('')}</div>`:emptyState('No recent joiners for this selection','user'))}
+    </div>`;
 
   box.onclick = e=>{
     const t=e.target;

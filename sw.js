@@ -1,7 +1,7 @@
 // Revenue Hub service worker: makes the site installable and opens it offline.
 // Site files are fetched fresh when online (so updates show at once) and cached
 // as a fallback. Calls to the Apps Script API are never cached.
-const CACHE = 'revenue-hub-v9';
+const CACHE = 'revenue-hub-v10';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'manifest.webmanifest',
                'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon-64.png'];
 
