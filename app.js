@@ -218,18 +218,14 @@ async function showDashboard(force){
   loadRevenueView();
 }
 
-function trendChart(t){
+function trendChart(t, metric='revenue'){
   if(!t || !t.length) return emptyState('No monthly data yet','chart');
-  const max=Math.max(...t.map(x=>x.po),1);
-  return `<div class="cols">${t.map(x=>`
-    <div class="col">
-      <div class="tip">${esc(x.label)} · Revenue ${compact(x.po)} · Margin ${compact(x.margin)} · ${x.heads} people</div>
-      <div class="col-bars">
-        <div class="bar po" style="height:0" data-h="${(x.po/max*100).toFixed(1)}%"></div>
-        <div class="bar mg" style="height:0" data-h="${(Math.max(0,x.margin)/max*100).toFixed(1)}%"></div>
-      </div>
-      <div class="col-lbl">${esc(x.label)}</div>
-    </div>`).join('')}</div>`;
+  const values=t.map(x=>metric==='margin'?x.margin:x.po);
+  const max=Math.max(...values.map(v=>Math.abs(v)),1);
+  return `<div class="cols">${t.map(x=>{
+    const value=metric==='margin'?x.margin:x.po;
+    return `<div class="col"><div class="tip">${esc(x.label)} · ${metric==='margin'?'Margin':'Revenue'} ${compact(value)} · ${x.heads} people</div><div class="col-bars"><div class="bar ${metric==='margin'?'mg':'po'}" style="height:0" data-h="${(Math.abs(value)/max*100).toFixed(1)}%"></div></div><div class="col-lbl">${esc(x.label)}</div></div>`;
+  }).join('')}</div>`;
 }
 
 function donut(list){
@@ -517,7 +513,7 @@ async function showAudit(){
    REVENUE EXPLORER  (cascading multi-select filters + revenue | margin switch)
    Data comes from getRevenueView in Code.gs
    ===================================================================== */
-S.rv = { sel: store.get('rvsel2', {}), metric: store.get('rvmetric2', 'revenue'), open: store.get('rvopen2', true), data: null, openKey: null, clientScopeKey: null };
+S.rv = { sel: store.get('rvsel2', {}), metric: 'overview', open: store.get('rvopen2', false), data: null, openKey: null, clientScopeKey: null };
 function rvSyncClientScope(){
   const clients=S.rv.sel.client||[], key=[...clients].sort().join('\u0001');
   if(key!==S.rv.clientScopeKey){ S.rv.sel.st=clients.length?['Active','NP']:[]; S.rv.clientScopeKey=key; }
@@ -577,7 +573,7 @@ function rvPeople(list){
       <div class="li rv-li" data-open="employees:${x.row}" data-q="${esc([x.name,x.client,x.bu,x.loc,x.skill].join(' ').toLowerCase())}">
         <span class="ini" style="background:${hashColor(x.name)}">${esc(initials(x.name))}</span>
         <div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${esc([x.client,x.bu,x.loc,x.skill].filter(Boolean).join(' · '))}</div></div>
-        <div class="rv-vals"><b>${compact(x.revenue)}</b><span>margin ${compact(x.margin)}</span></div></div>`).join('')}</div>`;
+        <span class="chip t-gray">${esc(x.status||'Resource')}</span></div>`).join('')}</div>`;
 }
 function rvSpocs(list){
   if(!list || !list.length) return emptyState('No client managers found for this selection','chat');
@@ -587,12 +583,12 @@ function rvSpocs(list){
       <div class="grow"><div class="t">${esc(x.name)} <span class="chip t-gray">${esc(x.client)}</span></div>
         <div class="s">${esc(x.bus.join(', ')||'No BU')} · ${x.count} resource${x.count===1?'':'s'}</div>
         <div class="s">${esc(x.names.slice(0,5).join(', '))}${x.names.length>5?' +'+(x.names.length-5)+' more':''}</div></div>
-      <div class="rv-vals"><b>${compact(x.revenue)}</b><span>team revenue</span></div></div>`).join('')}</div>`;
+      <span class="chip t-gray">${x.count} resources</span></div>`).join('')}</div>`;
 }
 
 function renderRevenueView(){
   const box=$('#rvBox'), f=S.rv, d=f.data; if(!box||!d) return;
-  if(!['revenue','margin','resources','spocs'].includes(f.metric)) f.metric='revenue';
+  if(!['overview','revenue','margin','resources','spocs'].includes(f.metric)) f.metric='overview';
   const m=f.metric, mv=m==='margin'?'margin':'revenue', k=d.kpi, sel=d.sel, fcs=d.facets;
   const pick=key=>sel[key]||[];
   const when=`${pick('month').length?pick('month').join(', '):'Full year'} ${pick('year').length?pick('year').join(', '):'(all years)'}`;
@@ -612,10 +608,10 @@ function renderRevenueView(){
       </div></div>`;
   };
   const tile=(t,i)=>{
-    const on=pick('client').includes(t.name), big=mv==='margin'?t.margin:t.revenue, small=mv==='margin'?'revenue '+compact(t.revenue):'margin '+compact(t.margin);
-    return `<button type="button" class="clay rv-tile${on?' sel':''}${t.revenue===0?' zero':''}" data-tile="${esc(t.name)}">
+    const on=pick('client').includes(t.name);
+    return `<button type="button" class="clay rv-tile${on?' sel':''}${t.headcount===0?' zero':''}" data-tile="${esc(t.name)}">
       <span class="clay-ico md ic-folder" style="--tile:${RV_GRAD[i%RV_GRAD.length]}">${icon('folder')}</span>
-      <b>${esc(t.name)}</b><span class="n">${compact(big)}</span><span class="sm">${t.headcount} resources · ${small}</span></button>`;
+      <b>${esc(t.name)}</b><span class="n">${t.headcount} resources</span><span class="sm">${on?'Selected client':'View client dashboard'}</span></button>`;
   };
   const mb=(key,label,icn,grad,sub)=>`<button type="button" class="clay rv-mb${m===key?' sel':''}" data-mb="${key}">
       <span class="clay-ico md ic-${icn}" style="--tile:${grad}">${icon(icn)}</span><b>${label}</b><span class="sm">${sub}</span></button>`;
@@ -628,68 +624,70 @@ function renderRevenueView(){
   const empty=(k.revenue===0 && !d.trend.length);
 
   let panel='';
-  if(m==='resources') panel=card(12,'user','Resources',`${esc(period)} · ${(d.resources||[]).length} people`,rvPeople(d.resources));
+  if(m==='overview') panel=`
+    <div class="clay card fade-in span-12">
+      <div class="card-h">${ico('dashboard','md')}<div class="grow"><h3>Management overview</h3><div class="sub">Operational snapshot · ${esc(period)}</div></div></div>
+      <div class="kpis">
+        ${kpi('Clients','folder',tiles.length,'in the employee data',false)}
+        ${kpi('Resources', 'user',k.heads,'in selected scope',false)}
+        ${kpi('Business units','dashboard',d.byBU.length,'represented in selected scope',false)}
+        ${kpi('Locations','cloud',d.byLoc.length,'represented in selected scope',false)}
+      </div>
+      ${d.byBU.length?card(6,'dashboard','Headcount by BU','Operational headcount',donut(d.byBU)):''}
+      ${card(6,'send','Recent joiners',`${esc(period)} · latest client start dates`,(d.recent||[]).length?`<div class="list">${d.recent.map(r=>`<div class="li" data-open="employees:${r.row}"><span class="ini" style="background:${hashColor(r.name)}">${esc(initials(r.name))}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.client)} · ${esc(r.skill)}</div></div><span class="chip t-blue">${esc(r.date)}</span></div>`).join('')}</div>`:emptyState('No recent joiners for this selection','user'))}
+    </div>`;
+  else if(m==='resources') panel=card(12,'user','Resources',`${esc(period)} · ${(d.resources||[]).length} people`,rvPeople(d.resources));
   else if(m==='spocs') panel=card(12,'chat','SPOCs (client managers)',`${esc(period)} · ${(d.spocs||[]).length} contacts`,rvSpocs(d.spocs));
+  else if(m==='revenue') panel=`
+    ${empty?rvEmpty(d,pick('client')):''}
+    <div class="kpis">${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),true)}${kpi('Consultants','user',k.heads,'billing in period',false)}</div>
+    <div class="grid rv-grid">
+      ${card(12,'chart','Monthly revenue trend',esc(period),trendChart(tr,'revenue'))}
+      ${d.byBU.length?card(6,'dashboard','BU-wise revenue','Business unit',rvBars(d.byBU,'revenue')):''}
+      ${d.byLoc.length?card(6,'cloud','Location-wise revenue','Resource location',rvBars(d.byLoc,'revenue')):''}
+      ${pick('client').length!==1?card(6,'folder','Client-wise revenue','Clients',rvBars(d.byClient,'revenue')):''}
+      ${hasSBU?card(6,'sliders','Sub BU-wise revenue','Sub business unit',rvBars(d.bySBU,'revenue')):''}
+      ${card(6,'user','Top consultants by revenue','Top 8',rvBars(d.people,'revenue'))}
+    </div>`;
   else panel=`
     ${empty?rvEmpty(d,pick('client')):''}
-    <div class="kpis">
-      ${kpi('Revenue','chart',compact(k.revenue),inr(k.revenue),m==='revenue')}
-      ${kpi('Margin','check',compact(k.margin),inr(k.margin),m==='margin')}
-      ${kpi('Margin %','dashboard',k.pct+'%','of revenue',false)}
-      ${kpi('Consultants','user',k.heads,'billing in period',false)}
-    </div>
+    <div class="kpis">${kpi('Margin','check',compact(k.margin),inr(k.margin),true)}${kpi('Margin %','dashboard',k.pct+'%','of revenue',false)}${kpi('Consultants','user',k.heads,'in selected period',false)}</div>
     <div class="grid rv-grid">
-      ${card(12,'chart','Monthly trend',esc(period),trendChart(tr))}
-      ${d.byBU.length?card(6,'dashboard',`BU-wise ${mv}`,'Business unit',rvBars(d.byBU,mv)):''}
-      ${d.byLoc.length?card(6,'cloud',`Location-wise ${mv}`,'Resource location',rvBars(d.byLoc,mv)):''}
-      ${pick('client').length!==1?card(6,'folder',`Client-wise ${mv}`,'Clients',rvBars(d.byClient,mv)):''}
-      ${hasSBU?card(6,'sliders',`Sub BU-wise ${mv}`,'Sub business unit',rvBars(d.bySBU,mv)):''}
-      ${card(6,'user',`Top consultants by ${mv}`,'Top 8',rvBars(d.people,mv))}
+      ${card(12,'chart','Monthly margin trend',esc(period),trendChart(tr,'margin'))}
+      ${d.byBU.length?card(6,'dashboard','BU-wise margin','Business unit',rvBars(d.byBU,'margin')):''}
+      ${d.byLoc.length?card(6,'cloud','Location-wise margin','Resource location',rvBars(d.byLoc,'margin')):''}
+      ${pick('client').length!==1?card(6,'folder','Client-wise margin','Clients',rvBars(d.byClient,'margin')):''}
+      ${hasSBU?card(6,'sliders','Sub BU-wise margin','Sub business unit',rvBars(d.bySBU,'margin')):''}
+      ${card(6,'user','Top consultants by margin','Top 8',rvBars(d.people,'margin'))}
     </div>`;
 
+  const navButton=(key,label,icn)=>`<button type="button" class="rv-nav-btn${m===key?' active':''}" data-mb="${key}"><span>${ico(icn,'sm')}</span>${label}</button>`;
   box.innerHTML = `
-    <div class="clay rv-sum fade-in">
-      <div class="rv-cap">${esc(selectedClients.length?selectedClients.join(', '):'All clients')} · ${esc(when)}</div>
-      <div class="r2"><div><div class="sm">Revenue</div><div class="num big">${inr(tot.r)}</div></div>
-        <div class="right"><div class="sm">Margin</div><div class="num mid pos">${inr(tot.g)}</div></div></div>
-      <div class="sm">${tot.h} resources · ${tot.r?Math.round(tot.g/tot.r*1000)/10:0}% margin</div>
+    <div class="rv-dashboard-head"><div><div class="rv-h">${esc(selectedClients.length?selectedClients.join(', '):'All clients')}</div><div class="rv-note">${m==='overview'?'Operational overview · financial figures are hidden':esc(when)}</div></div>${['revenue','margin'].includes(m)?'<button type="button" class="btn btn-ghost" data-hide-financial>Hide financials</button>':''}<button type="button" class="btn btn-ghost rv-filter-trigger" data-toggle>${ico('sliders','sm')} Filters <span class="chip t-lavender">${active.length}</span></button></div>
+    <div class="rv-nav">
+      ${navButton('overview','Overview','dashboard')}
+      ${navButton('revenue','Revenue','chart')}
+      ${navButton('margin','Margin','check')}
+      ${navButton('resources','Resources','user')}
+      ${navButton('spocs','SPOCs','chat')}
     </div>
     <div class="rv-tiles">
       <button type="button" class="clay rv-tile${selectedClients.length?'':' sel'}" data-tile="">
-        <span class="clay-ico md ic-dashboard">${icon('dashboard')}</span><b>All clients</b><span class="n">${selectedClients.length?'View consolidated':compact(mv==='margin'?tot.g:tot.r)}</span><span class="sm">${selectedClients.length?'Switch to consolidated view':tot.h+' resources'}</span></button>
+        <span class="clay-ico md ic-dashboard">${icon('dashboard')}</span><b>All clients</b><span class="n">${tot.h} resources</span><span class="sm">${selectedClients.length?'Switch to consolidated view':'Current portfolio'}</span></button>
       ${visibleTiles.map(tile).join('')}
     </div>
-
     <div class="clay rv-filters fade-in">
-      <div class="rv-fh" data-toggle>
-        ${ico('sliders','md')}
-        <div class="grow"><b>Filters</b><div class="sub">${active.length?active.length+' active':'Options narrow as you select'}</div></div>
-        <span class="rv-chev${f.open?' up':''}"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      </div>
-      <div class="rv-fp${f.open?' open':''}"><div class="rv-fpi">
-        <div class="rv-fgrid">${fcs.map(msField).join('')}</div>
-        <div class="rv-fa"><button class="btn btn-ghost" data-reset>Reset all filters</button></div>
-      </div></div>
+      <div class="rv-fh" data-toggle>${ico('sliders','md')}<div class="grow"><b>Dashboard filters</b><div class="sub">${active.length?active.length+' active filters':'Choose period, status, BU, location and more'}</div></div><span class="rv-chev${f.open?' up':''}"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+      <div class="rv-fp${f.open?' open':''}"><div class="rv-fpi"><div class="rv-fgrid">${fcs.map(msField).join('')}</div><div class="rv-fa"><button class="btn btn-ghost" data-reset>Reset all filters</button></div></div></div>
       ${active.length?`<div class="rv-chips">${active.map(fc=>`<button class="chip t-lavender" data-clear="${esc(fc.key)}">${esc(fc.label)}: ${esc(pick(fc.key).join(', '))} ✕</button>`).join('')}</div>`:''}
     </div>
-
-    <div class="rv-top"><div><div class="rv-h">${esc(period)}</div>${d.note?`<div class="rv-note">${esc(d.note)}</div>`:''}</div></div>
-    <div class="rv-mbs">
-      ${mb('revenue','Revenue','chart',RV_GRAD[2],compact(k.revenue))}
-      ${mb('margin','Margin','check',RV_GRAD[1],k.pct+'% of revenue')}
-      ${mb('resources','Resources','user',RV_GRAD[0],(d.resources||[]).length+' people')}
-      ${mb('spocs','SPOCs','chat',RV_GRAD[4],(d.spocs||[]).length+' contacts')}
-    </div>
-    ${panel}
-    <div class="grid rv-grid">
-      ${d.byBU.length?card(6,'dashboard','Headcount by BU','Filtered resources · Active + NP on client view',donut(d.byBU)):''}
-      ${card(6,'send','Recent joiners',`${esc(period)} · latest client start dates`,(d.recent||[]).length?`<div class="list">${d.recent.map(r=>`<div class="li" data-open="employees:${r.row}"><span class="ini" style="background:${hashColor(r.name)}">${esc(initials(r.name))}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${esc(r.client)} · ${esc(r.skill)}</div></div><span class="chip t-blue">${esc(r.date)}</span></div>`).join('')}</div>`:emptyState('No recent joiners for this selection','user'))}
-    </div>`;
+    ${panel}`;
 
   box.onclick = e=>{
     const t=e.target;
     const tl=t.closest('[data-tile]'); if(tl){ f.sel.client=tl.dataset.tile?[tl.dataset.tile]:[]; loadRevenueView(); return; }
     const mbt=t.closest('[data-mb]'); if(mbt){ f.metric=mbt.dataset.mb; rvSave(); renderRevenueView(); return; }
+    if(t.closest('[data-hide-financial]')){ f.metric='overview'; rvSave(); renderRevenueView(); return; }
     if(t.closest('[data-toggle]')){
       f.open=!f.open; rvSave();
       box.querySelector('.rv-fp').classList.toggle('open',f.open);
